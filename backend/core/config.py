@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     APP_URL:str = Field(...)
+    FRONTEND_URL: str = Field(...)
 
 
 
