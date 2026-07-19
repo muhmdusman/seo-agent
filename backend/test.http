@@ -1,0 +1,6 @@
+### List Search Console Sites
+
+### List Search Console Sites
+
+GET http://127.0.0.1:8000/api/v1/search-console/sites?user_id=764ce69b-a599-4c9a-bc7a-9736a027ee33
+Accept: application/json

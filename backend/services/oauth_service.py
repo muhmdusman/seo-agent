@@ -77,3 +77,19 @@ class OAuthService:
         await self.db.flush()
 
         return account
+    
+    async def get_google_account(
+    self,
+    user_id):
+
+        stmt = (
+        select(OAuthAccount)
+        .where(
+            OAuthAccount.user_id == user_id,
+            OAuthAccount.provider == OAuthProvider.GOOGLE,
+        )
+    )
+
+        result = await self.db.execute(stmt)
+
+        return result.scalar_one_or_none()
