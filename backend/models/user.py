@@ -21,7 +21,7 @@ class User(Base, TimestampMixin):
     username: Mapped[str] = mapped_column(
         String(50),
         unique=True,
-        nullable=False,
+        nullable=True,
         index=True,
     )
 
@@ -38,8 +38,4 @@ class User(Base, TimestampMixin):
         cascade="all, delete-orphan",
     )
 
-    sessions = relationship(
-        "Session",
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )
+    

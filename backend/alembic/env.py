@@ -9,7 +9,6 @@ from models.base import Base
 # Import models so Alembic discovers them
 import models.user
 import models.oauth_account
-import models.session
 
 config = context.config
 

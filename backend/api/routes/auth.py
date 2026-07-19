@@ -31,22 +31,43 @@ async def google_login():
     )
 
 
+# @router.get("/google/callback")
+# async def google_callback(
+#     code: str,
+#     db: AsyncSession = Depends(get_db),
+# ):
+
+#     auth_service = AuthService(db)
+
+#     try:
+#         user = await auth_service.login_with_google(code)
+#     except Exception:
+#         params = urlencode({"status": "error"})
+#         return RedirectResponse(
+#             url=f"{settings.FRONTEND_URL}/callback?{params}",
+#             status_code=302,
+#         )
+
+#     params = urlencode(
+#         {
+#             "status": "success",
+#             "email": user.email,
+#         }
+#     )
+
+#     return RedirectResponse(
+#         url=f"{settings.FRONTEND_URL}/callback?{params}",
+#         status_code=302,
+#     )
+
 @router.get("/google/callback")
 async def google_callback(
     code: str,
     db: AsyncSession = Depends(get_db),
 ):
-
     auth_service = AuthService(db)
 
-    try:
-        user = await auth_service.login_with_google(code)
-    except Exception:
-        params = urlencode({"status": "error"})
-        return RedirectResponse(
-            url=f"{settings.FRONTEND_URL}/callback?{params}",
-            status_code=302,
-        )
+    user = await auth_service.login_with_google(code)
 
     params = urlencode(
         {

@@ -8,6 +8,7 @@ from core.config import settings
 from db.dbconfig import get_db
 
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_db()
