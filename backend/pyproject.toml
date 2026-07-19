@@ -5,7 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "alembic>=1.18.5",
     "fastapi[standard]>=0.139.2",
+    "google-auth>=2.56.0",
     "psycopg[binary]>=3.3.4",
     "sqlalchemy>=2.0.51",
 ]

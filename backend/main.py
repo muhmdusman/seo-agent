@@ -3,12 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from core.config import settings
-from db.dbconfig import check_db_connection
+from db.dbconfig import get_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    check_db_connection()
+    get_db()
     print("✅ Database connected")
 
     yield

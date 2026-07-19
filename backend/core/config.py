@@ -19,11 +19,14 @@ class Settings(BaseSettings):
 
     GOOGLE_CLIENT_ID: str = Field(...)
     GOOGLE_CLIENT_SECRET: str = Field(...)
+    GOOGLE_REDIRECT_URI:str = Field()
 
     JWT_SECRET: str = Field(...)
     JWT_ALGORITHM: str = "HS256"
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    APP_URL:str = Field(...)
+
 
 
 @lru_cache
