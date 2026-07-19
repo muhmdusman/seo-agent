@@ -1,0 +1,1 @@
+"""Here we only have routes related to auth"""
