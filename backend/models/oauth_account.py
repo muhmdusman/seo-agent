@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime
 from sqlalchemy import Enum
 
 from core.enums import OAuthProvider
+from sqlalchemy import UniqueConstraint
 
 
 
@@ -16,7 +16,14 @@ from models.base import Base, TimestampMixin
 
 class OAuthAccount(Base, TimestampMixin):
     __tablename__ = "oauth_accounts"
-
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "provider_user_id",
+            name="uq_provider_user",
+        ),
+    )
+    
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
@@ -40,20 +47,14 @@ class OAuthAccount(Base, TimestampMixin):
         unique=True,
     )
 
-    access_token: Mapped[str] = mapped_column(
-        nullable=False,
-    )
-
-    refresh_token: Mapped[str] = mapped_column(
-        nullable=False,
-    )
-
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-    )
-
     user = relationship(
         "User",
         back_populates="oauth_accounts",
+    )
+
+    credentials = relationship(
+    "OAuthCredential",
+    back_populates="oauth_account",
+    uselist=False,
+    cascade="all, delete-orphan",
     )

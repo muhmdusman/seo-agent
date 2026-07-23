@@ -38,4 +38,12 @@ class User(Base, TimestampMixin):
         cascade="all, delete-orphan",
     )
 
+    sessions = relationship(
+    "Session",
+    back_populates="user",
+    cascade="all, delete-orphan",
+    )
+
+    
+
     

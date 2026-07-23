@@ -113,28 +113,35 @@ class GoogleOAuthService:
 
 
     def verify_id_token(
-        self,
-        token: str,
-    ) -> GoogleUserInfo:
+    self,
+    token: str,
+) -> GoogleUserInfo:
 
 
         payload = id_token.verify_oauth2_token(
-            token,
-            requests.Request(),
-            settings.GOOGLE_CLIENT_ID,
-        )
+        token,
+        requests.Request(),
+        settings.GOOGLE_CLIENT_ID,
+    )
+
+
+        email = payload["email"]
+
+        username = email.split("@")[0]
 
 
         return GoogleUserInfo(
-            google_id=payload["sub"],
+        google_id=payload["sub"],
 
-            email=payload["email"],
+        email=email,
 
-            email_verified=payload.get(
-                "email_verified",
-                False
-            ),
-        )
+        username=username,
+
+        email_verified=payload.get(
+            "email_verified",
+            False,
+        ),
+    )
 
 
 

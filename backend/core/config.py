@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     APP_URL:str = Field(...)
     FRONTEND_URL: str = Field(...)
+    MISTRAL_API_KEY:str = Field(...)
+    REFRESH_TOKEN_EXPIRY_DAYS:int = Field(...)
 
 
 

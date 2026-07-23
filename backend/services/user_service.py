@@ -14,10 +14,12 @@ class UserService:
     async def create(
         self,
         email: str,
+        username:str
     ) -> User:
 
         user = User(
             email=email,
+            username=username
         )
 
         self.db.add(user)
