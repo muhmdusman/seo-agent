@@ -5,7 +5,7 @@ import { FormEvent, useState } from "react";
 import { getGoogleLoginUrl } from "@/lib/api/auth";
 import { saveSiteUrl } from "@/lib/storage";
 import { normalizeWebsiteUrl } from "@/lib/validators";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/Input";
 
 export function SiteConnectForm() {
@@ -45,8 +45,8 @@ export function SiteConnectForm() {
           aria-label="Website URL"
           autoFocus
         />
-        <Button type="submit" isLoading={isSubmitting}>
-          Connect with Google
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Connecting..." : "Connect with Google"}
         </Button>
       </div>
       <p className="text-xs text-zinc-500">

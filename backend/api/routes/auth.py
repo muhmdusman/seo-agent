@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from db.dbconfig import get_db
 
+from dependencies.auth import authenticate
 from services.auth_service import AuthService
 from services.google_oauth import GoogleOAuthService
 
@@ -80,3 +81,15 @@ async def google_callback(
 
 
     return redirect_response
+
+
+@router.get("/me")
+async def get_me(user=Depends(authenticate)):
+    return {"user_id": user["sub"]}
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return {"status": "ok"}

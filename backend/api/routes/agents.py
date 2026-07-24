@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +28,7 @@ async def weekly_agent(
             user_id=user_id,
             site_url=site_url,
         ):
-            yield f"data: {chunk}\n\n"
+            yield f"data: {json.dumps({'message': chunk})}\n\n"
 
     return StreamingResponse(
         stream(),

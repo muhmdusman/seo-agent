@@ -1,20 +1,32 @@
-import { SiteConnectForm } from "@/components/site-connect/SiteConnectForm";
+'use client';
+
+import { Button } from '@/components/ui/button';
+import { getGoogleLoginUrl } from '@/lib/api/auth';
 
 export default function Home() {
+  const handleGoogleLogin = () => {
+    window.location.href = getGoogleLoginUrl();
+  };
+
   return (
-    <div className="flex flex-1 items-center justify-center bg-zinc-50 px-6 py-16">
-      <main className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-200 sm:p-10">
-        <div className="mb-8 flex flex-col gap-2 text-center">
-          <h1 className="text-2xl font-semibold text-zinc-900">
-            Search Console Agent
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-zinc-50 to-zinc-100 px-6 py-16">
+      <main className="flex w-full max-w-md flex-col items-center gap-8 rounded-2xl bg-white p-12 shadow-lg ring-1 ring-zinc-200">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <h1 className="text-3xl font-bold text-zinc-900">
+            Welcome to our SEO Tool
           </h1>
-          <p className="text-sm text-zinc-500">
-            Enter your website to connect it with Google Search Console
-            and start pulling search analytics.
+          <p className="text-sm text-zinc-600">
+            Analyze your website's performance with Google Search Console insights
           </p>
         </div>
 
-        <SiteConnectForm />
+        <Button
+          onClick={handleGoogleLogin}
+          size="lg"
+          className="w-full"
+        >
+          Please Authorize with Google
+        </Button>
       </main>
     </div>
   );

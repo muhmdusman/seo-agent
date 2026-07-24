@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { clearSiteUrl, getSiteUrl } from "@/lib/storage";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 
 export function CallbackStatus() {
   const searchParams = useSearchParams();
@@ -19,28 +19,16 @@ export function CallbackStatus() {
     return () => clearSiteUrl();
   }, []);
 
+  useEffect(() => {
+    if (status === "success") {
+      window.location.href = "/dashboard";
+    }
+  }, [status]);
+
   if (status === "success") {
     return (
       <div className="flex flex-col items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
-          ✓
-        </div>
-        <h1 className="text-xl font-semibold text-zinc-900">
-          Connected successfully
-        </h1>
-        <p className="text-sm text-zinc-500">
-          {email ? `Signed in as ${email}.` : "You're signed in."}
-          {siteUrl && (
-            <>
-              {" "}
-              We&apos;re ready to pull Search Console data for{" "}
-              <span className="font-medium text-zinc-700">{siteUrl}</span>.
-            </>
-          )}
-        </p>
-        <Link href="/dashboard" className="mt-2 w-full sm:w-auto">
-          <Button className="w-full sm:w-auto">Go to dashboard</Button>
-        </Link>
+        <p className="text-sm text-zinc-500">Redirecting to your dashboard...</p>
       </div>
     );
   }

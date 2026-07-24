@@ -8,6 +8,7 @@ from fastapi import (
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.config import settings
 from db.dbconfig import get_db
 
 from services.jwt_service import JWTService
@@ -122,9 +123,12 @@ async def authenticate(
 
 
         response.set_cookie(
-            key="Access_token",
+            key="access_token",
             value=new_access_token,
             httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES,
         )
 
 
