@@ -43,5 +43,5 @@ async def list_sites(
     service = SearchConsoleService()
 
     return await service.list_sites(
-        account.credentials.access_token,
+        account.access_token,
     )
