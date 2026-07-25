@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SEO analytics icon">
+  <defs>
+    <linearGradient id="seoBg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4f46e5" />
+      <stop offset="1" stop-color="#7c3aed" />
+    </linearGradient>
+  </defs>
+
+  <rect width="64" height="64" rx="14" fill="url(#seoBg)" />
+
+  <!-- Search lens holding a rising bar chart: search performance, i.e. SEO. -->
+  <g fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round">
+    <circle cx="28" cy="27" r="13" />
+    <path d="M37.6 36.6 L47.5 46.5" stroke-width="6" />
+  </g>
+
+  <g fill="#ffffff">
+    <rect x="21.5" y="28" width="4" height="6" rx="1.2" />
+    <rect x="26" y="23.5" width="4" height="10.5" rx="1.2" />
+    <rect x="30.5" y="19.5" width="4" height="14.5" rx="1.2" />
+  </g>
+</svg>

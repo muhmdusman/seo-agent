@@ -90,21 +90,24 @@ class OAuthService:
 
     async def get_google_account(
         self,
-        user_id,
-    ):
+    user_id,
+):
 
         stmt = (
-            select(OAuthAccount)
-            .options(
-                selectinload(OAuthAccount.user),
-                selectinload(OAuthAccount.credentials),
-            )
-            .where(
-                OAuthAccount.user_id == user_id,
-                OAuthAccount.provider == OAuthProvider.GOOGLE,
-            )
+        select(OAuthCredential)
+        .join(OAuthCredential.oauth_account)
+        .options(
+            selectinload(OAuthCredential.oauth_account)
+            .selectinload(OAuthAccount.user),
         )
+        .where(
+            OAuthAccount.user_id == user_id,
+            OAuthAccount.provider == OAuthProvider.GOOGLE,
+        )
+    )
 
         result = await self.db.execute(stmt)
 
-        return result.scalar_one_or_none()
+        credentials = result.scalar_one_or_none()
+
+        return credentials
