@@ -50,33 +50,51 @@ export function SiteSelector({ onSiteSelect }: SiteSelectorProps) {
   }
 
   if (loading) {
-    return <div className="text-sm text-gray-500">Loading sites...</div>;
-  }
-
-  if (error) {
-    return <div className="text-sm text-red-500">{error}</div>;
-  }
-
-  if (sites.length === 0) {
     return (
-      <div className="text-sm text-gray-500">
-        No sites found. Please add sites to your Google Search Console.
+      <div className="glass-strong flex h-11 w-full max-w-md items-center gap-2.5 rounded-xl px-4 text-sm text-slate-500">
+        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
+        Loading properties...
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <p role="alert" className="text-sm text-red-800">
+        {error}
+      </p>
+    );
+  }
+
+  if (sites.length === 0) {
+    return (
+      <p className="text-sm text-slate-600">
+        No properties found. Add and verify a site in Google Search Console
+        first.
+      </p>
+    );
+  }
+
   return (
-    <Select onValueChange={onSiteSelect}>
-      <SelectTrigger className="w-full max-w-md">
-        <SelectValue placeholder="Select a site to analyze" />
-      </SelectTrigger>
-      <SelectContent>
-        {sites.map((site) => (
-          <SelectItem key={site.siteUrl} value={site.siteUrl}>
-            {site.siteUrl}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="flex w-full max-w-md flex-col gap-2">
+      <label
+        htmlFor="site-selector"
+        className="text-xs font-medium uppercase tracking-wide text-slate-500"
+      >
+        Search Console property
+      </label>
+      <Select onValueChange={onSiteSelect}>
+        <SelectTrigger id="site-selector" className="w-full">
+          <SelectValue placeholder="Select a property to analyze" />
+        </SelectTrigger>
+        <SelectContent>
+          {sites.map((site) => (
+            <SelectItem key={site.siteUrl} value={site.siteUrl}>
+              {site.siteUrl}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }

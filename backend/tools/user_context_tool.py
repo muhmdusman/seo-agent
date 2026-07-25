@@ -24,10 +24,19 @@ def create_user_context_tool(db):
                 "Google account not connected."
             )
 
+        # Tokens live on the one-to-one OAuthCredential record, not on the
+        # account itself. get_google_account() eager-loads this relationship.
+        credentials = account.credentials
+
+        if credentials is None:
+            raise ValueError(
+                "Google credentials missing for this account."
+            )
+
         return {
             "user_id": user_id,
-            "access_token": account.access_token,
-            "expires_at": account.expires_at,
+            "access_token": credentials.access_token,
+            "expires_at": credentials.expires_at,
         }
 
     return get_user_context

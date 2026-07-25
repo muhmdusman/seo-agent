@@ -27,21 +27,33 @@ export function CallbackStatus() {
 
   if (status === "success") {
     return (
-      <div className="flex flex-col items-center gap-3">
-        <p className="text-sm text-zinc-500">Redirecting to your dashboard...</p>
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex flex-col items-center gap-4"
+      >
+        <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-200 border-t-indigo-600" />
+        <p className="text-sm text-slate-600">
+          Connected. Redirecting to your dashboard...
+        </p>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
-        ✕
+      <div
+        aria-hidden="true"
+        className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600 ring-1 ring-red-200"
+      >
+        <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+          <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+        </svg>
       </div>
-      <h1 className="text-xl font-semibold text-zinc-900">
+      <h1 className="text-xl font-semibold text-slate-900">
         Something went wrong
       </h1>
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm leading-relaxed text-slate-600">
         We couldn&apos;t connect your Google account. Please try again.
       </p>
       <Link href="/" className="mt-2 w-full sm:w-auto">
