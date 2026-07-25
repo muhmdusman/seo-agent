@@ -12,7 +12,7 @@ def create_user_context_tool(db):
         user_id: str,
     ) -> dict:
         """
-        Return the Google access token for a user.
+        Return the Google credentials for a user.
         """
 
         account = await oauth_service.get_google_account(
@@ -24,10 +24,13 @@ def create_user_context_tool(db):
                 "Google account not connected."
             )
 
+        credentials = account.credentials
+
         return {
             "user_id": user_id,
-            "access_token": account.access_token,
-            "expires_at": account.expires_at,
+            "access_token": credentials.access_token,
+            "refresh_token": credentials.refresh_token,
+            "expires_at": credentials.expires_at,
         }
 
     return get_user_context
