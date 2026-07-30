@@ -233,7 +233,12 @@ class SearchConsoleService:
                     site_url,
                 ),
             )
-
+        print({ "queries": queries,
+                    "pages": pages,
+                    "devices": devices,
+                    "countries": countries,
+                    "daily_performance": daily,
+                    "sitemaps": sitemaps})
         return {
             "queries": queries,
             "pages": pages,

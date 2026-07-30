@@ -42,7 +42,8 @@ class GoogleOAuthService:
 
             "access_type": "offline",
 
-            "prompt": "consent",
+            "prommpt": "consent"
+
         }
 
 
@@ -93,6 +94,8 @@ class GoogleOAuthService:
 
         response.raise_for_status()
 
+        print("RAW GOOGLE TOKEN RESPONSE:")
+        print(response.json())
 
         token_data = GoogleTokenResponse.model_validate(
             response.json()
