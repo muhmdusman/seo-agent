@@ -1,2 +1,62 @@
 .kiro/
 .env
+
+# Lambda deployment artifacts (DO NOT COMMIT)
+backend/lambda_function.zip
+backend/lambda_code.zip
+backend/lambda_package/
+backend/lambda_code_only/
+backend/requirements.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+backend/.venv/
+venv/
+env/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.vercel
+frontend/.turbo
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+
+# Temporary files
+*.tmp
+*.temp
+response.json
+output.json
+/tmp/
+
+# AWS
+.aws-sam/
+samconfig.toml
