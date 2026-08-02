@@ -1,9 +1,20 @@
 # 🔧 Fix Amplify Monorepo Deployment
 
 ## ✅ What I Just Did:
-1. ✅ Moved `amplify.yml` to `frontend/amplify.yml`
-2. ✅ Updated paths (removed `cd frontend`, changed `baseDirectory` to `.next`)
-3. ✅ Pushed to GitHub
+1. ✅ Created `amplify.yml` at ROOT with `applications` key (required for monorepo)
+2. ✅ Set `appRoot: frontend` to point to frontend folder
+3. ✅ Updated paths (relative to frontend: `.next`, `node_modules`)
+4. ✅ Pushed to GitHub
+
+## 📁 Current Structure:
+```
+/amplify.yml          ← At ROOT (with applications + appRoot keys)
+/frontend/
+  package.json
+  .next/              ← Build output
+  node_modules/
+/backend/
+```
 
 ---
 
