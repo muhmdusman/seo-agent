@@ -61,6 +61,7 @@ The backend owns coordination: it redirects the browser through Google's consent
 - **Streaming progress** over SSE, so a slow multi-system analysis reports what it's doing instead of hanging.
 - **Markdown-rendered output** with headings, tables, and code, produced under an explicit format contract.
 - **Session auth** using signed JWTs in HTTP-only cookies, backed by a revocable session record.
+- **🆕 Automated Daily Reports** - AWS Lambda-powered scheduler that generates and emails SEO reports daily for all your sites. See [SCHEDULER_FEATURE.md](SCHEDULER_FEATURE.md) for details.
 
 ## Prerequisites
 
