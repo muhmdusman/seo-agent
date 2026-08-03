@@ -12,3 +12,14 @@ wheels/
 #
 .env
 notes.md
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+
+# Lambda package (DO NOT deploy to EB!)
+lambda_package/
+lambda_function.zip
+deploy_lambda.sh
+deploy_via_s3.sh
+app-*.zip

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { clearSiteUrl, getSiteUrl } from "@/lib/storage";
@@ -9,7 +9,10 @@ import { Button } from "@/components/ui/button";
 
 export function CallbackStatus() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const status = searchParams.get("status");
+  const accessToken = searchParams.get("access_token");
+  const refreshToken = searchParams.get("refresh_token");
   const email = searchParams.get("email");
 
   const [siteUrl, setSiteUrl] = useState<string | null>(null);
@@ -20,10 +23,15 @@ export function CallbackStatus() {
   }, []);
 
   useEffect(() => {
-    if (status === "success") {
-      window.location.href = "/dashboard";
+    if (status === "success" && accessToken && refreshToken) {
+      // Store tokens in localStorage
+      localStorage.setItem("access_token", accessToken);
+      localStorage.setItem("refresh_token", refreshToken);
+      
+      // Redirect to dashboard
+      router.push("/dashboard");
     }
-  }, [status]);
+  }, [status, accessToken, refreshToken, router]);
 
   if (status === "success") {
     return (
