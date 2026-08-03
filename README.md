@@ -279,11 +279,3 @@ Released under the [MIT License](LICENSE).
 ## Topics
 
 `ai-seo-agent` `seo` `seo-tools` `google-search-console` `ai-agent` `llm` `langchain` `mistral-ai` `fastapi` `nextjs` `react` `typescript` `python` `postgresql` `sqlalchemy` `oauth2` `server-sent-events` `tailwindcss` `seo-automation` `search-console-api`
-
----
-
-<div align="center">
-
-Built with FastAPI, Next.js, and Mistral. Star the repo if it helped.
-
-</div>
