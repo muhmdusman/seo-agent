@@ -173,39 +173,79 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
 
 ## Setup and run
 
-### Backend
+### Quick Start (Recommended)
+
+Start everything with a single command:
 
 ```bash
-# Point the backend at the root .env (config.py resolves ./.env against the cwd)
+./dev.sh
+```
+
+This starts database + backend + frontend. Press `Ctrl+C` to stop all services.
+
+### Individual Services
+
+**Backend only:**
+```bash
+cd backend
+./start.sh
+```
+
+The `start.sh` script will:
+- Check for `.env` file and create a symlink to it
+- Start the PostgreSQL database using Docker Compose
+- Wait for the database to become healthy
+- Run database migrations if needed
+- Start the FastAPI backend server with hot-reload
+
+Press `Ctrl+C` to stop the backend server, then run:
+```bash
+./stop.sh
+```
+
+The `stop.sh` script gracefully stops the PostgreSQL database container.
+
+**Frontend only:**
+```bash
+cd frontend
+npm run dev
+```
+
+### Quick Reference
+
+| Command | What it does |
+|---------|-------------|
+| `./dev.sh` | Start everything (database + backend + frontend) |
+| `./backend/start.sh` | Start PostgreSQL database + run migrations + start FastAPI backend |
+| `./backend/stop.sh` | Stop PostgreSQL database container |
+| `npm run dev` | Start frontend development server (from frontend folder) |
+
+### Service URLs
+
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://127.0.0.1:8000
+- **API Docs:** http://127.0.0.1:8000/docs
+- **Adminer (DB):** http://localhost:8081
+
+### Manual Setup (Advanced)
+
+If you prefer to start services individually:
+
+**Backend:**
+```bash
 cd backend && ln -sfn ../.env .env
-
-# Install Python dependencies into backend/.venv
 uv sync
-
-# Start PostgreSQL 17 + Adminer
 docker compose -f db/docker-compose.yaml up -d
-
-# Apply migrations
 uv run alembic upgrade head
-
-# Run the API with hot reload
 uv run uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-API at `http://localhost:8000`, interactive docs at `/docs`, Adminer at `http://localhost:8081`.
-
-> [!NOTE]
-> The symlink in step one matters. `backend/core/config.py` sets `env_file=".env"`, which resolves relative to the working directory, so running uvicorn from `backend/` will not find a root-level `.env` without it.
-
-### Frontend
-
+**Frontend:**
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-
-App at `http://localhost:3000`. Keep it on port 3000, since `FRONTEND_URL` is the only origin the backend's CORS config allows.
 
 ### Verify
 
