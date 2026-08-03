@@ -13,8 +13,7 @@ Deployed on AWS infrastructure with automated daily reports delivered via email.
 
 ## 🚀 Live Demo
 
-- **Frontend:** https://main.d3vozze6u0rukp.amplifyapp.com/
-- **Backend API:** http://search-console-prod.eba-auaxqesy.us-east-1.elasticbeanstalk.com
+- **Application:** https://main.d3vozze6u0rukp.amplifyapp.com/
 - **Repository:** https://github.com/muhmdusman/seo-agent
 
 ## ☁️ AWS Architecture
@@ -140,6 +139,14 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60
 REFRESH_TOKEN_EXPIRY_DAYS=7
 
 MISTRAL_API_KEY="your-mistral-api-key"
+
+# SMTP Configuration (for email reports)
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=587
+SMTP_USER="your-email@gmail.com"
+SMTP_PASSWORD="your-app-specific-password"
+SMTP_FROM_EMAIL="your-email@gmail.com"
+SMTP_FROM_NAME="Search Console Agent"
 ```
 
 | Variable | Purpose |
@@ -151,9 +158,12 @@ MISTRAL_API_KEY="your-mistral-api-key"
 | `DATABASE_URL` | Async SQLAlchemy connection string; also used by Alembic |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Identify and authenticate the *application* to Google. One pair serves every user; per-user tokens live in the database |
 | `GOOGLE_REDIRECT_URI` | Must match the Google Cloud registration byte for byte |
-| `JWT_SECRET` / `JWT_ALGORITHM` | Sign and verify this app's own access and refresh cookies |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` / `REFRESH_TOKEN_EXPIRY_DAYS` | Cookie and session lifetimes |
+| `JWT_SECRET` / `JWT_ALGORITHM` | Sign and verify this app's own access and refresh tokens |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` / `REFRESH_TOKEN_EXPIRY_DAYS` | Token lifetimes |
 | `MISTRAL_API_KEY` | Authenticates `ChatMistralAI` for the analysis call |
+| `SMTP_HOST` / `SMTP_PORT` | SMTP server connection details for sending email reports |
+| `SMTP_USER` / `SMTP_PASSWORD` | SMTP authentication credentials (use app-specific password for Gmail) |
+| `SMTP_FROM_EMAIL` / `SMTP_FROM_NAME` | Email sender information for automated reports |
 
 The frontend reads one browser-visible value from `frontend/.env.local`:
 
