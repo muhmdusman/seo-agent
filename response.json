@@ -1,1 +1,0 @@
-{"errorMessage": "'LambdaContext' object has no attribute 'request_id'", "errorType": "AttributeError", "requestId": "f523b6f8-edf4-4e00-a579-73bbaf942ff3", "stackTrace": ["  File \"/var/task/lambda_handler.py\", line 85, in lambda_handler\n    logger.info(f\"Request ID: {context.request_id}\")\n"]}
