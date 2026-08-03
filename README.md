@@ -2,14 +2,31 @@
 
 # Search Console Agent
 
-**An AI SEO agent that turns your Google Search Console data into five prioritised, evidence-backed improvements.**
+**An automated SEO reporting system that generates daily insights from Google Search Console data using AI-powered analysis.**
 
-Connect your Google account, pick a verified property, and the agent pulls 30 days of search performance, crawls your sitemap, and streams back a ranked action plan as it works.
+Deployed on AWS infrastructure with automated daily reports delivered via email.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)](#contributing)
+[![AWS](https://img.shields.io/badge/AWS-Deployed-orange.svg?style=for-the-badge&logo=amazonaws)](https://main.d3vozze6u0rukp.amplifyapp.com/)
 
 </div>
+
+## 🚀 Live Demo
+
+- **Frontend:** https://main.d3vozze6u0rukp.amplifyapp.com/
+- **Backend API:** http://search-console-prod.eba-auaxqesy.us-east-1.elasticbeanstalk.com
+- **Repository:** https://github.com/muhmdusman/seo-agent
+
+## ☁️ AWS Architecture
+
+This application is fully deployed on AWS using:
+
+- **AWS Amplify** - Frontend hosting with CI/CD
+- **AWS Elastic Beanstalk** - Backend API (FastAPI)
+- **AWS RDS PostgreSQL** - Database
+- **AWS Lambda** - Automated report generation
+- **AWS EventBridge** - Daily scheduling (8 AM UTC)
+- **AWS CloudWatch** - Logging and monitoring
 
 ## Tech Stack
 
@@ -34,34 +51,45 @@ Connect your Google account, pick a verified property, and the agent pulls 30 da
 
 </div>
 
-## How it works
+## 🏗️ How It Works
 
-```mermaid
-flowchart LR
-    A[Landing page] -->|Authorize| B[FastAPI OAuth]
-    B --> C[Google consent]
-    C -->|code| B
-    B -->|HTTP-only JWT cookies| D[Dashboard]
-    D --> E[Pick a verified site]
-    E --> F[Weekly agent]
-    F --> G[Search Console<br/>30-day snapshot]
-    F --> H[Sitemap crawl]
-    G & H --> I[Mistral]
-    I -->|SSE progress + result| D
+The system automates SEO monitoring by:
+
+1. **Authentication** - Users sign in with Google OAuth to access Search Console data
+2. **Site Selection** - Choose from verified Search Console properties
+3. **Data Collection** - Fetch 30-day performance metrics automatically
+4. **AI Analysis** - Generate insights using Mistral AI
+5. **Report Delivery** - Email reports daily at 8 AM UTC via AWS Lambda
+6. **Continuous Monitoring** - AWS EventBridge ensures reports run every day
+
+### Architecture Diagram
+
+```
+User Browser
+    ↓
+AWS Amplify (Frontend)
+    ↓
+AWS Elastic Beanstalk (Backend API)
+    ↓
+AWS RDS PostgreSQL (Database)
+
+AWS EventBridge (Daily 8 AM UTC)
+    ↓
+AWS Lambda (Report Generation)
+    ↓
+Google Search Console API → Mistral AI → SMTP Email
 ```
 
-The backend owns coordination: it redirects the browser through Google's consent flow, stores the resulting provider credentials, then runs a fixed pipeline (credentials → Search Console → sitemap crawl → LLM) and streams each step to the browser over Server-Sent Events. Google stays authoritative for search data, and the database only holds identity and authorization state.
+## ✨ Features
 
-## Features
-
-- **Google OAuth 2.0 sign-in** with `webmasters.readonly` scope, offline access, and refresh-token rotation.
-- **Property picker** driven by the sites Google actually verified for the signed-in account.
-- **30-day Search Console snapshot** collecting queries, pages, devices, countries, daily performance, and sitemaps concurrently.
-- **Sitemap-driven crawler** extracting titles, meta descriptions, canonicals, and heading structure; degrades gracefully when no sitemap is submitted.
-- **Streaming progress** over SSE, so a slow multi-system analysis reports what it's doing instead of hanging.
-- **Markdown-rendered output** with headings, tables, and code, produced under an explicit format contract.
-- **Session auth** using signed JWTs in HTTP-only cookies, backed by a revocable session record.
-- **🆕 Automated Daily Reports** - AWS Lambda-powered scheduler that generates and emails SEO reports daily for all your sites. See [SCHEDULER_FEATURE.md](SCHEDULER_FEATURE.md) for details.
+- 🔐 **Google OAuth 2.0 authentication** with `webmasters.readonly` scope
+- 📊 **Google Search Console integration** for performance data
+- 🤖 **AI-powered insights** using Mistral API
+- 📧 **Automated email delivery** via SMTP
+- ⏰ **Daily automated reports** via AWS Lambda + EventBridge
+- 🌐 **Multi-site support** - manage multiple Search Console properties
+- 📱 **Responsive web interface** built with Next.js
+- ☁️ **Fully cloud-deployed** on AWS infrastructure
 
 ## Prerequisites
 
