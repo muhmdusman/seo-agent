@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.git/
+.gitignore
+*.log
+.DS_Store
+alembic/versions/__pycache__/
+lambda_package/
+lambda_function.zip
+deploy_lambda.sh
+deploy_via_s3.sh
+.elasticbeanstalk/logs/
