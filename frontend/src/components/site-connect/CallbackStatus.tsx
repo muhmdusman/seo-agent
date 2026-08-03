@@ -24,12 +24,24 @@ export function CallbackStatus() {
 
   useEffect(() => {
     if (status === "success" && accessToken && refreshToken) {
+      console.log("🔐 Storing tokens in localStorage");
+      console.log("Access token length:", accessToken.length);
+      console.log("Refresh token length:", refreshToken.length);
+      console.log("Access token preview:", accessToken.substring(0, 50) + "...");
+      
       // Store tokens in localStorage
       localStorage.setItem("access_token", accessToken);
       localStorage.setItem("refresh_token", refreshToken);
       
+      console.log("✅ Tokens stored, redirecting to dashboard");
+      
       // Redirect to dashboard
       router.push("/dashboard");
+    } else {
+      console.log("❌ Missing tokens or status");
+      console.log("Status:", status);
+      console.log("Has access token:", !!accessToken);
+      console.log("Has refresh token:", !!refreshToken);
     }
   }, [status, accessToken, refreshToken, router]);
 

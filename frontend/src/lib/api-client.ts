@@ -21,7 +21,15 @@ class ApiClient {
    */
   private getAccessToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('access_token');
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      console.log("🔑 Using access token from localStorage");
+      console.log("Token length:", token.length);
+      console.log("Token preview:", token.substring(0, 50) + "...");
+    } else {
+      console.log("⚠️  No access token in localStorage");
+    }
+    return token;
   }
 
   /**
