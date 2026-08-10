@@ -39,7 +39,7 @@ class WeeklyAgent:
         site_url: str,
     ) -> str | None:
         """
-        Pick a sitemap URL to scrape, or None when the site has none.
+        Pick a  sitemap URL to scrape, or None when the site has none.
 
         Search Console answers the sitemaps endpoint with an empty object when
         the owner has never submitted a sitemap, so neither the "sitemap" key
