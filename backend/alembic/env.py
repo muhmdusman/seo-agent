@@ -6,9 +6,11 @@ from sqlalchemy import engine_from_config, pool
 from core.config import settings
 from models.base import Base
 
-# Import models so Alembic discovers them
+# Import all models so Alembic discovers them
 import models.user
 import models.oauth_account
+import models.oauth_credential
+import models.session
 
 config = context.config
 
