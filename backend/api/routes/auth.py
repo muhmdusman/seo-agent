@@ -46,39 +46,20 @@ async def google_callback(
         code
     )
 
-
+    # For cross-domain auth, we need to pass tokens via URL
+    # Frontend will store them in localStorage
     params = urlencode(
         {
             "status": "success",
+            "access_token": result["access_token"],
+            "refresh_token": result["refresh_token"],
         }
     )
-
 
     redirect_response = RedirectResponse(
         url=f"{settings.FRONTEND_URL}/callback?{params}",
         status_code=302,
     )
-
-
-    redirect_response.set_cookie(
-        key="access_token",
-        value=result["access_token"],
-        httponly=True,
-        secure=False,
-        samesite="lax",
-        max_age=60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES,
-    )
-
-
-    redirect_response.set_cookie(
-        key="refresh_token",
-        value=result["refresh_token"],
-        httponly=True,
-        secure=False,
-        samesite="lax",
-        max_age=settings.REFRESH_TOKEN_EXPIRY_DAYS,
-    )
-
 
     return redirect_response
 

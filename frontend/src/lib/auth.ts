@@ -1,21 +1,26 @@
-import { API_BASE_URL } from './config';
+import { apiClient } from './api-client';
 
-// Fetch the authenticated user's id from the backend (cookies are httpOnly)
+// Fetch the authenticated user's id from the backend using Bearer token
 export async function getCurrentUserId(): Promise<string | null> {
   try {
-    const res = await fetch(`${API_BASE_URL}/auth/me`, { credentials: 'include' });
-    if (!res.ok) return null;
-    const data = await res.json();
+    const data = await apiClient.get<{ user_id: string }>('/auth/me');
     return data.user_id ?? null;
   } catch {
     return null;
   }
 }
 
-// Log out: clear cookies on backend, then redirect to landing
+// Log out: clear tokens from localStorage and redirect to landing
 export async function logout(): Promise<void> {
   try {
-    await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
+    // Clear tokens from localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+    }
+    
+    // Try to call logout endpoint (optional, since tokens are client-side)
+    await apiClient.post('/auth/logout');
   } catch {
     // ignore
   } finally {

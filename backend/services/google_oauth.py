@@ -42,7 +42,7 @@ class GoogleOAuthService:
 
             "access_type": "offline",
 
-            "prommpt": "consent"
+            "prompt": "consent"
 
         }
 
