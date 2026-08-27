@@ -9,6 +9,6 @@ celery_app = Celery(
 
 celery_app.conf.update(CELERY_CONFIG)
 
-celery_app.autodiscover_tasks(
-    ["workers"]
+celery_app.conf.imports = (
+    "workers.test_worker",
 )

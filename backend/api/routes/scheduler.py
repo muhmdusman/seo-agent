@@ -11,13 +11,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from db.dbconfig import get_db
 from services.scheduler_service import run_daily_reports_job
+from workers.test_worker import process_test_job
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/scheduler", tags=["scheduler"])
+from models.job import Job
 
 
-@router.post("/trigger", status_code=status.HTTP_200_OK)
+@router.get("/trigger", status_code=status.HTTP_200_OK)
 async def trigger_daily_reports(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -49,7 +51,7 @@ async def trigger_daily_reports(
         
         return {
             "success": True,
-            "message": "Daily reports completed",
+            "message": "All reports enqueued",
             "statistics": stats,
         }
         
@@ -131,3 +133,33 @@ If you're reading this, the email service is working perfectly!
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Test email failed: {str(e)}"
         )
+
+
+@router.get("/jobs")
+async def test_jobs(
+    db: AsyncSession = Depends(get_db),
+):
+    # 1. Create job
+    job = Job(
+        status="queued",
+    )
+
+    db.add(job)
+
+    # 2. Save to PostgreSQL
+    await db.commit()
+
+    # Get generated UUID
+    await db.refresh(job)
+
+    # 3. Send the UUID to Celery
+    process_test_job.delay(str(job.id))
+
+    # 4. FastAPI immediately returns
+    return {
+        "job_id": str(job.id),
+        "status": job.status,
+        "message": "Job successfully queued for processing",
+    } 
+
+    

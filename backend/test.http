@@ -1,14 +1,37 @@
-### List Search Console Sites
+# ### List Search Console Sites
 
-### List Search Console Sites
+# ### List Search Console Sites
 
-### Weekly SEO Agent
+# ### Weekly SEO Agent
 
-# GET http://localhost:8000/api/v1/agent/weekly?user_id=764ce69b-a599-4c9a-bc7a-9736a027ee33&site_url=https://bitoreal.pk/
-# Accept: text/event-stream
+# # GET http://localhost:8000/api/v1/agent/weekly?user_id=764ce69b-a599-4c9a-bc7a-9736a027ee33&site_url=https://bitoreal.pk/
+# # Accept: text/event-stream
 
-### Test Search Console Sites
+# ### Test Search Console Sites
 
-GET http://localhost:8000/api/v1/search-console/sites
-Accept: application/json
-Cookie: access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYWRhOTE1YS03NzliLTQ0ZTYtYTJiNy00N2M4N2ZlZTU3MWQiLCJzaWQiOiI5MDU4YTdhMS03NzY4LTQ2MTItYTU5Ni01MDczODY0YjBiOTkiLCJ0eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzg0Nzg1NzgwfQ.b3v3Paq27jvf40i4UYzFchvcvv-hPgN9dqvueFsGkDE; refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaWQiOiI5MDU4YTdhMS03NzY4LTQ2MTItYTU5Ni01MDczODY0YjBiOTkiLCJ0eXBlIjoicmVmcmVzaCIsImV4cCI6MTc4NTM4Njk4MH0.JHg2ECF2UM8VyaKMKqmp2BxQGH0E7hVYs1NT8fW2Yho
+# GET http://localhost:8000/api/v1/search-console/sites
+# Accept: application/json
+# Cookie: access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYWRhOTE1YS03NzliLTQ0ZTYtYTJiNy00N2M4N2ZlZTU3MWQiLCJzaWQiOiI5MDU4YTdhMS03NzY4LTQ2MTItYTU5Ni01MDczODY0YjBiOTkiLCJ0eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzg0Nzg1NzgwfQ.b3v3Paq27jvf40i4UYzFchvcvv-hPgN9dqvueFsGkDE; refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaWQiOiI5MDU4YTdhMS03NzY4LTQ2MTItYTU5Ni01MDczODY0YjBiOTkiLCJ0eXBlIjoicmVmcmVzaCIsImV4cCI6MTc4NTM4Njk4MH0.JHg2ECF2UM8VyaKMKqmp2BxQGH0E7hVYs1NT8fW2Yho
+### Job 1
+### Job 1
+GET http://127.0.0.1:8000/scheduler/jobs
+
+###
+
+### Job 2
+GET http://127.0.0.1:8000/scheduler/jobs
+
+###
+
+### Job 3
+GET http://127.0.0.1:8000/scheduler/jobs
+
+###
+
+### Job 4
+GET http://127.0.0.1:8000/api/v1/scheduler/jobs
+
+###
+
+### Job 5
+GET http://127.0.0.1:8000/scheduler/jobs
