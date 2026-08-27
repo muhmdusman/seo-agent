@@ -12,7 +12,7 @@ wheels/
 #
 .env
 notes.md
-docker-compose.yaml
+
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml

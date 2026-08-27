@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from db.dbconfig import get_db
-from services.scheduler_service import run_daily_reports_job
+from services.scheduler_service import SchedulerService
 from workers.test_worker import process_test_job
 
 logger = logging.getLogger(__name__)
@@ -19,47 +19,48 @@ router = APIRouter(prefix="/scheduler", tags=["scheduler"])
 from models.job import Job
 
 
-@router.get("/trigger", status_code=status.HTTP_200_OK)
+@router.post("/trigger", status_code=status.HTTP_202_ACCEPTED)
 async def trigger_daily_reports(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
-    Manually trigger the daily report generation and email delivery.
-    
-    This endpoint can be called:
-    - Manually for testing
-    - By AWS EventBridge/CloudWatch Events
-    - By any external cron service
-    
-    **Note:** In production, this should be protected with authentication
-    or API key validation to prevent unauthorized triggers.
-    
-    Returns:
-        dict: Statistics about the run including success/failure counts
+    Queue daily SEO report jobs for all active users.
+
+    The endpoint only discovers users/sites, creates Job records,
+    and publishes the jobs to Celery.
+
+    The actual report generation and email delivery happen
+    asynchronously in the Celery worker.
     """
-    
+
     if not settings.SCHEDULER_ENABLED:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Scheduler is disabled in configuration"
+            detail="Scheduler is disabled in configuration",
         )
-    
-    logger.info("Manual trigger received for daily reports")
-    
+
+    logger.info(
+        "Manual trigger received for daily reports"
+    )
+
     try:
-        stats = await run_daily_reports_job(db)
-        
+        scheduler = SchedulerService(db)
+
+        await scheduler.queue_daily_reports()
+
         return {
             "success": True,
-            "message": "All reports enqueued",
-            "statistics": stats,
+            "message": "Daily report jobs queued successfully",
         }
-        
+
     except Exception as e:
-        logger.exception("Failed to execute daily reports")
+        logger.exception(
+            "Failed to queue daily reports"
+        )
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Report generation failed: {str(e)}"
+            detail=f"Failed to queue daily reports: {str(e)}",
         )
 
 
