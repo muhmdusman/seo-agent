@@ -43,7 +43,11 @@ class Settings(BaseSettings):
     DAILY_REPORT_TIME: str = "08:00"
     ADMIN_EMAIL: str = Field(...)
 
-
+    #redis config
+    # REDIS_HOST:str = Field(...)|"localhost"
+    # REDIS_PORT:int = Field(...)|6379
+    REDIS_URL: str = Field("redis://localhost:6379/0")
+ 
 
 @lru_cache
 def get_settings() -> Settings:

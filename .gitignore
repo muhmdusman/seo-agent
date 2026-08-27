@@ -1,6 +1,6 @@
 .kiro/
 .env
-
+pooler_test
 # Lambda deployment artifacts (DO NOT COMMIT)
 backend/lambda_function.zip
 backend/lambda_code.zip

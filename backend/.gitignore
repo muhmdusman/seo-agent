@@ -12,3 +12,4 @@ wheels/
 #
 .env
 notes.md
+docker-compose.yaml
