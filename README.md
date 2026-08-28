@@ -99,7 +99,7 @@ Google Search Console API → Mistral AI → SMTP Email
 | [Node.js](https://nodejs.org/) | 20+ | Next.js 16 |
 | [Docker](https://docs.docker.com/get-docker/) + Compose | latest | Local PostgreSQL |
 | Google Cloud project | — | OAuth client + Search Console API |
-| [Mistral API key](https://console.mistral.ai/) | — | Generates the recommendations |
+| [Bedrock API key](https://console.bedrock.aws/) | — | Generates the recommendations |
 
 ## Google Cloud setup
 
@@ -138,7 +138,7 @@ JWT_ALGORITHM="HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 REFRESH_TOKEN_EXPIRY_DAYS=7
 
-MISTRAL_API_KEY="your-mistral-api-key"
+BEDROCK_API_KEY="your-bedrock-api-key"
 
 # SMTP Configuration (for email reports)
 SMTP_HOST="smtp.gmail.com"
