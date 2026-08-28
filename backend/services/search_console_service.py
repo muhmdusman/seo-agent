@@ -2,7 +2,12 @@ from datetime import date
 from urllib.parse import quote
 
 import asyncio
+import logging
+
 import httpx
+
+
+logger = logging.getLogger(__name__)
 
 
 class SearchConsoleService:
@@ -13,9 +18,9 @@ class SearchConsoleService:
         self,
         access_token: str,
     ):
-
         return {
             "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json",
         }
 
     async def _query(
@@ -44,6 +49,15 @@ class SearchConsoleService:
             },
         )
 
+        if response.status_code >= 400:
+            logger.error(
+                "Search Console API error: "
+                f"status={response.status_code}, "
+                f"site={site_url}, "
+                f"dimensions={dimensions}, "
+                f"response={response.text}"
+            )
+
         response.raise_for_status()
 
         return response.json()
@@ -59,6 +73,13 @@ class SearchConsoleService:
                 f"{self.BASE_URL}/sites",
                 headers=self._headers(access_token),
             )
+
+            if response.status_code >= 400:
+                logger.error(
+                    "Search Console sites request failed: "
+                    f"status={response.status_code}, "
+                    f"response={response.text}"
+                )
 
             response.raise_for_status()
 
@@ -170,6 +191,14 @@ class SearchConsoleService:
             headers=self._headers(access_token),
         )
 
+        if response.status_code >= 400:
+            logger.error(
+                "Search Console sitemap request failed: "
+                f"status={response.status_code}, "
+                f"site={site_url}, "
+                f"response={response.text}"
+            )
+
         response.raise_for_status()
 
         return response.json()
@@ -233,12 +262,7 @@ class SearchConsoleService:
                     site_url,
                 ),
             )
-        print({ "queries": queries,
-                    "pages": pages,
-                    "devices": devices,
-                    "countries": countries,
-                    "daily_performance": daily,
-                    "sitemaps": sitemaps})
+
         return {
             "queries": queries,
             "pages": pages,

@@ -35,3 +35,17 @@ GET http://127.0.0.1:8000/api/v1/scheduler/jobs
 
 ### Job 5
 GET http://127.0.0.1:8000/scheduler/jobs
+
+### Trigger daily SEO reports
+POST http://localhost:8000/scheduler/trigger
+Content-Type: application/json
+
+
+### Trigger again
+POST http://localhost:8000/api/v1/scheduler/trigger
+Content-Type: application/json
+
+
+### Trigger a third job
+POST http://localhost:8000/scheduler/trigger
+Content-Type: application/json

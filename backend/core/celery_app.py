@@ -10,5 +10,5 @@ celery_app = Celery(
 celery_app.conf.update(CELERY_CONFIG)
 
 celery_app.conf.imports = (
-    "workers.test_worker",
+    "workers.daily_report_worker",
 )

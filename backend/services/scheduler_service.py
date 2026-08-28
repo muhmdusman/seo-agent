@@ -5,8 +5,10 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from models.job import Job
 from models.user import User
 from models.oauth_account import OAuthAccount
+from core.enums import JobStatus
 from workers.daily_report_worker import generate_daily_report
 
 logger = logging.getLogger(__name__)
@@ -19,8 +21,10 @@ class SchedulerService:
 
     async def queue_daily_reports(self) -> None:
         """
-        Find all users and their verified Search Console sites,
-        then publish one Celery task for each report.
+        Discover today's daily report jobs.
+
+        PostgreSQL stores the job.
+        Celery only receives the job ID and processes it asynchronously.
         """
 
         logger.info("Starting daily report job queueing")
@@ -34,6 +38,9 @@ class SchedulerService:
             )
 
             if not oauth_account:
+                logger.warning(
+                    f"No OAuth account for user {user.id}"
+                )
                 continue
 
             sites = await self._get_user_sites(
@@ -42,18 +49,46 @@ class SchedulerService:
 
             for site_url in sites:
 
-                # Publish task to Celery/Redis
-                generate_daily_report.delay(
-                    user_id=str(user.id),
+                # --------------------------------------------------
+                # 1. Create persistent job in PostgreSQL
+                # --------------------------------------------------
+
+                job = Job(
+                    user_id=user.id,
                     site_url=site_url,
+                    status=JobStatus.QUEUED,
+                )
+
+                self.db.add(job)
+
+                # Generate/persist the UUID before sending to Celery
+                await self.db.flush()
+
+                job_id = str(job.id)
+
+                # --------------------------------------------------
+                # 2. Commit the job
+                # --------------------------------------------------
+
+                await self.db.commit()
+
+                # --------------------------------------------------
+                # 3. Publish ONLY job_id to Celery
+                # --------------------------------------------------
+
+                generate_daily_report.delay(
+                    job_id=job_id
                 )
 
                 logger.info(
-                    f"Queued daily report for "
-                    f"{user.email} - {site_url}"
+                    f"Queued daily report job={job_id} "
+                    f"user={user.email} "
+                    f"site={site_url}"
                 )
 
-        logger.info("Finished queueing daily report jobs")
+        logger.info(
+            "Finished queueing daily report jobs"
+        )
 
     async def _get_active_users(self) -> list[User]:
 
@@ -67,7 +102,8 @@ class SchedulerService:
             )
             .join(
                 OAuthCredential,
-                OAuthAccount.id == OAuthCredential.oauth_account_id,
+                OAuthAccount.id
+                == OAuthCredential.oauth_account_id,
             )
             .where(
                 OAuthCredential.access_token.isnot(None)
@@ -89,10 +125,12 @@ class SchedulerService:
         query = (
             select(OAuthAccount)
             .options(
-                selectinload(OAuthAccount.credentials)
+                selectinload(
+                    OAuthAccount.credentials
+                )
             )
             .where(
-                OAuthAccount.user_id == user_id
+                OAuthAccount.user_id == user_id,
             )
         )
 
@@ -112,13 +150,17 @@ class SchedulerService:
         search_console_service = SearchConsoleService()
 
         try:
+
             sites_data = await search_console_service.list_sites(
                 access_token
             )
 
             sites = []
 
-            for entry in sites_data.get("siteEntry", []):
+            for entry in sites_data.get(
+                "siteEntry",
+                [],
+            ):
 
                 permission = entry.get(
                     "permissionLevel",
@@ -129,6 +171,7 @@ class SchedulerService:
                     "siteOwner",
                     "siteFullUser",
                 ]:
+
                     site_url = entry.get("siteUrl")
 
                     if site_url:
@@ -137,7 +180,9 @@ class SchedulerService:
             return sites
 
         except Exception:
+
             logger.exception(
                 "Failed to fetch Search Console sites"
             )
+
             return []

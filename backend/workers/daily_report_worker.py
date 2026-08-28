@@ -4,9 +4,9 @@ Celery worker for generating and delivering daily SEO reports.
 
 import asyncio
 import logging
+import sys
 from datetime import datetime, timezone
 
-# from celery.exceptions import MaxRetriesExceededError
 from sqlalchemy import select
 
 from agents.daily_agent import DailyAgent
@@ -17,8 +17,30 @@ from models.job import Job
 from models.user import User
 from services.email_service import email_service
 
+
+# -------------------------------------------------------------------
+# Windows asyncio compatibility
+# -------------------------------------------------------------------
+#
+# Psycopg's async implementation cannot use Windows'
+# ProactorEventLoop. Celery runs in a separate process from
+# FastAPI, so we explicitly configure the event-loop policy here.
+#
+# This must happen before asyncio.run() creates the event loop.
+#
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(
+        asyncio.WindowsSelectorEventLoopPolicy()
+    )
+
+
 logger = logging.getLogger(__name__)
 
+
+# -------------------------------------------------------------------
+# Celery task
+# -------------------------------------------------------------------
 
 @celery_app.task(
     bind=True,
@@ -36,14 +58,19 @@ def generate_daily_report(
     Celery entry point for a single daily SEO report job.
 
     Celery executes this synchronous function.
-    The actual application logic is async, so we
-    bridge into the async function with asyncio.run().
+
+    The actual application logic is async, so we bridge
+    into the async function using asyncio.run().
     """
 
     return asyncio.run(
         _process_daily_report(job_id)
     )
 
+
+# -------------------------------------------------------------------
+# Actual async job processing
+# -------------------------------------------------------------------
 
 async def _process_daily_report(
     job_id: str,
@@ -72,9 +99,9 @@ async def _process_daily_report(
 
     async with AsyncSessionLocal() as db:
 
-        # ---------------------------------------------------------
+        # -----------------------------------------------------------
         # 1. Fetch Job
-        # ---------------------------------------------------------
+        # -----------------------------------------------------------
 
         result = await db.execute(
             select(Job).where(
@@ -89,8 +116,8 @@ async def _process_daily_report(
                 f"Job {job_id} does not exist"
             )
 
-            # There is nothing Celery can meaningfully retry
-            # if the application job itself doesn't exist.
+            # There is nothing useful to retry if the
+            # application-level Job doesn't exist.
             return
 
         logger.info(
@@ -99,9 +126,9 @@ async def _process_daily_report(
             f"site={job.site_url}"
         )
 
-        # ---------------------------------------------------------
+        # -----------------------------------------------------------
         # 2. Mark job as processing
-        # ---------------------------------------------------------
+        # -----------------------------------------------------------
 
         job.status = JobStatus.PROCESSING
         job.started_at = datetime.now(timezone.utc)
@@ -112,9 +139,9 @@ async def _process_daily_report(
 
         try:
 
-            # -----------------------------------------------------
+            # -------------------------------------------------------
             # 3. Fetch User
-            # -----------------------------------------------------
+            # -------------------------------------------------------
 
             user_result = await db.execute(
                 select(User).where(
@@ -130,15 +157,15 @@ async def _process_daily_report(
                     f"does not exist"
                 )
 
-            # -----------------------------------------------------
+            # -------------------------------------------------------
             # 4. Create DailyAgent
-            # -----------------------------------------------------
+            # -------------------------------------------------------
 
             daily_agent = DailyAgent(db)
 
-            # -----------------------------------------------------
+            # -------------------------------------------------------
             # 5. Generate SEO report
-            # -----------------------------------------------------
+            # -------------------------------------------------------
 
             logger.info(
                 f"Generating report for "
@@ -157,9 +184,9 @@ async def _process_daily_report(
                 f"Report generated for job={job.id}"
             )
 
-            # -----------------------------------------------------
+            # -------------------------------------------------------
             # 6. Send email
-            # -----------------------------------------------------
+            # -------------------------------------------------------
 
             success = await email_service.send_daily_report(
                 user_email=user.email,
@@ -185,9 +212,9 @@ async def _process_daily_report(
                 f"job={job.id}"
             )
 
-            # -----------------------------------------------------
+            # -------------------------------------------------------
             # 7. Mark job as completed
-            # -----------------------------------------------------
+            # -------------------------------------------------------
 
             job.status = JobStatus.COMPLETED
             job.completed_at = datetime.now(
@@ -203,9 +230,9 @@ async def _process_daily_report(
 
         except Exception as exc:
 
-            # -----------------------------------------------------
+            # -------------------------------------------------------
             # 8. Mark job as failed
-            # -----------------------------------------------------
+            # -------------------------------------------------------
 
             job.status = JobStatus.FAILED
             job.error_message = str(exc)
@@ -216,14 +243,12 @@ async def _process_daily_report(
                 f"Job {job.id} failed: {exc}"
             )
 
-            # -----------------------------------------------------
+            # -------------------------------------------------------
             # 9. Re-raise
-            # -----------------------------------------------------
+            # -------------------------------------------------------
             #
-            # VERY IMPORTANT:
+            # Celery must receive the exception so that its
+            # autoretry mechanism knows the task failed.
             #
-            # Celery needs to receive the exception.
-            # Otherwise Celery thinks the task succeeded even
-            # though our application marked it as failed.
-            #
+
             raise
