@@ -70,3 +70,9 @@ backend/.elasticbeanstalk/logs/
 # Secrets and config files with sensitive data
 BEDROCK_MIGRATION_GUIDE.md
 *_MIGRATION_GUIDE.md
+
+# Deployment folder (contains generated configs with secrets)
+deployment/config.env
+deployment/docker/.env.production
+deployment/**/*.pem
+deployment/**/*.key
