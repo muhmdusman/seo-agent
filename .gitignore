@@ -60,3 +60,13 @@ output.json
 # AWS
 .aws-sam/
 samconfig.toml
+
+# Elastic Beanstalk (DO NOT COMMIT - these are deployment artifacts)
+backend/.elasticbeanstalk/app_versions/*.zip
+backend/.elasticbeanstalk/logs/
+.ebextensions/
+.elasticbeanstalk/
+
+# Secrets and config files with sensitive data
+BEDROCK_MIGRATION_GUIDE.md
+*_MIGRATION_GUIDE.md

@@ -50,9 +50,11 @@ export default function DashboardPage() {
         userId
       )}&site_url=${encodeURIComponent(siteUrl)}`;
 
+      console.log('Fetching analysis from:', url);
       const res = await fetch(url, { credentials: 'include' });
 
       if (!res.ok || !res.body) {
+        console.error('Failed to start analysis:', res.status, res.statusText);
         setError('Failed to start analysis');
         setIsAnalyzing(false);
         return;
@@ -61,10 +63,16 @@ export default function DashboardPage() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let hasReceivedAnalysis = false;
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('Stream completed');
+          // Ensure spinner is off when stream ends
+          setIsAnalyzing(false);
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
         const parts = buffer.split('\n\n');
@@ -80,19 +88,33 @@ export default function DashboardPage() {
             const message = parsed.message;
             if (typeof message !== 'string') continue;
 
+            console.log('Received message:', message.substring(0, 100) + (message.length > 100 ? '...' : ''));
+
             if (KNOWN_STATUSES.includes(message)) {
+              console.log('Setting status:', message);
               setStatus(message);
+              // If we receive "Completed.", ensure loading stops
+              if (message === 'Completed.') {
+                console.log('Analysis completed, stopping spinner');
+                setIsAnalyzing(false);
+              }
             } else {
+              console.log('Setting analysis (length):', message.length);
               setAnalysis(message);
+              hasReceivedAnalysis = true;
+              // Once we have the analysis, hide the loading spinner immediately
+              console.log('Analysis received, hiding spinner now');
+              setIsAnalyzing(false);
             }
-          } catch {
-            // ignore parse errors
+          } catch (err) {
+            console.error('Failed to parse SSE message:', err, 'Payload:', payload);
           }
         }
       }
 
       setIsAnalyzing(false);
-    } catch {
+    } catch (err) {
+      console.error('Analysis failed with error:', err);
       setError('Analysis failed');
       setIsAnalyzing(false);
     }
@@ -156,7 +178,7 @@ export default function DashboardPage() {
 
         {isAnalyzing && <LoadingSpinner text={status || 'Analyzing...'} />}
 
-        {analysis && (
+        {!isAnalyzing && analysis && (
           <AnalysisDisplay siteUrl={selectedSite} analysis={analysis} />
         )}
       </main>

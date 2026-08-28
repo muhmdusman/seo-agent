@@ -28,10 +28,12 @@ class WeeklyAgent:
         self.user_tool = create_user_context_tool(db)
 
         self.llm = ChatMistralAI(
-    model_name="mistral-large-latest",
-    api_key=settings.MISTRAL_API_KEY,
-    temperature=0,
-)
+            model_name="mistral-large-latest",
+            api_key=settings.MISTRAL_API_KEY,
+            temperature=0,
+            timeout=120,  # Increase timeout to 120 seconds (default is 60)
+            max_retries=3,  # Retry up to 3 times on timeout
+        )
 
     @staticmethod
     def _resolve_sitemap_url(
@@ -176,7 +178,18 @@ it as Markdown rather than plain text:
 - Do not wrap the whole response in a code fence.
 """
 
+            logger.info(
+                "Sending prompt to Mistral AI (length: %d chars) for site: %s",
+                len(prompt),
+                site_url,
+            )
+
             response = await self.llm.ainvoke(prompt)
+
+            logger.info(
+                "Received response from Mistral AI (length: %d chars)",
+                len(response.content) if response.content else 0,
+            )
 
             yield response.content
 
