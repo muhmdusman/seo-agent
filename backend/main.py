@@ -9,6 +9,7 @@ from api.main import router as api_router
 from core.config import settings
 from db.dbconfig import get_db
 from db.dbconfig import engine
+import logging
 
 
 
@@ -46,6 +47,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 
 app.include_router(api_router)

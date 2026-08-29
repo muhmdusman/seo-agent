@@ -24,7 +24,7 @@ class DailyAgent:
     def __init__(self, db):
         self.user_tool = create_user_context_tool(db)
         self.llm = ChatMistralAI(
-            model_name="mistral-large-latest",
+            model_name="mistral-small-latest",
             api_key=settings.MISTRAL_API_KEY,
             temperature=0,
         )
