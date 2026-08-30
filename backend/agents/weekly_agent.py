@@ -3,7 +3,8 @@ import time
 from datetime import date, timedelta
 from urllib.parse import urljoin
 
-from langchain_mistralai import ChatMistralAI
+from strands import Agent
+from strands.models.litellm import LiteLLMModel
 
 from core.config import settings
 from tools.search_console_tool import collect_search_console_data
@@ -56,18 +57,20 @@ class WeeklyAgent:
             "Initializing Mistral LLM"
         )
 
-        self.llm = ChatMistralAI(
-            model_name="mistral-small-latest",
-            api_key=settings.MISTRAL_API_KEY,
-            temperature=0,
-            timeout=120,
-            max_retries=3,
+        self.model = LiteLLMModel(
+            model_id="mistral/mistral-small-latest",
+            client_args={
+                "api_key": settings.MISTRAL_API_KEY,
+            },
+            params={
+                "temperature": 0,
+            },
         )
 
         logger.info(
             "Mistral LLM initialized model=%s timeout=%s "
             "max_retries=%s temperature=%s",
-            "mistral-small-latest",
+            "mistral/mistral-small-latest",
             120,
             3,
             0,
@@ -464,10 +467,8 @@ class WeeklyAgent:
 
         try:
 
-            result = await scrape_website.ainvoke(
-                {
-                    "sitemap_url": sitemap_url,
-                }
+            result = await scrape_website(
+                sitemap_url=sitemap_url,
             )
 
             elapsed = time.perf_counter() - started
@@ -657,10 +658,8 @@ class WeeklyAgent:
 
             started = time.perf_counter()
 
-            context = await self.user_tool.ainvoke(
-                {
-                    "user_id": user_id,
-                }
+            context = await self.user_tool(
+                user_id=user_id,
             )
 
             elapsed = time.perf_counter() - started
@@ -806,8 +805,11 @@ class WeeklyAgent:
                 tool_input["end_date"],
             )
 
-            snapshot = await collect_search_console_data.ainvoke(
-                tool_input
+            snapshot = await collect_search_console_data(
+                access_token=tool_input["access_token"],
+                site_url=tool_input["site_url"],
+                start_date=tool_input["start_date"],
+                end_date=tool_input["end_date"],
             )
 
             elapsed = time.perf_counter() - started
@@ -1052,9 +1054,8 @@ it as Markdown rather than plain text:
                 "Sending prompt to Mistral"
             )
 
-            response = await self.llm.ainvoke(
-                prompt
-            )
+            agent = Agent(model=self.model, tools=[])
+            response = await agent.invoke_async(prompt)
 
             elapsed = time.perf_counter() - started
 
@@ -1073,8 +1074,8 @@ it as Markdown rather than plain text:
             )
 
             response_content = (
-                response.content
-                if response.content
+                str(response)
+                if str(response)
                 else ""
             )
 

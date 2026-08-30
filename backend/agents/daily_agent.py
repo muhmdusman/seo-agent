@@ -6,7 +6,8 @@ import logging
 from datetime import date, timedelta
 from urllib.parse import urljoin
 
-from langchain_mistralai import ChatMistralAI
+from strands import Agent
+from strands.models.litellm import LiteLLMModel
 
 from core.config import settings
 from tools.search_console_tool import collect_search_console_data
@@ -23,10 +24,14 @@ class DailyAgent:
 
     def __init__(self, db):
         self.user_tool = create_user_context_tool(db)
-        self.llm = ChatMistralAI(
-            model_name="mistral-small-latest",
-            api_key=settings.MISTRAL_API_KEY,
-            temperature=0,
+        self.model = LiteLLMModel(
+            model_id="mistral/mistral-small-latest",
+            client_args={
+                "api_key": settings.MISTRAL_API_KEY,
+            },
+            params={
+                "temperature": 0,
+            },
         )
 
     async def generate_report(
@@ -54,27 +59,27 @@ class DailyAgent:
             )
             
             # Get user credentials
-            context = await self.user_tool.ainvoke({"user_id": user_id})
+            context = await self.user_tool(user_id=user_id)
             
             # Fetch last 7 days of Search Console data for daily insights
-            snapshot = await collect_search_console_data.ainvoke(
-                {
-                    "access_token": context["access_token"],
-                    "site_url": site_url,
-                    "start_date": (date.today() - timedelta(days=7)).isoformat(),
-                    "end_date": date.today().isoformat(),
-                }
+            snapshot = await collect_search_console_data(
+                access_token=context["access_token"],
+                site_url=site_url,
+                start_date=(date.today() - timedelta(days=7)).isoformat(),
+                end_date=date.today().isoformat(),
             )
             
             # Generate concise report using LLM
             prompt = self._build_daily_prompt(snapshot, site_url)
-            response = await self.llm.ainvoke(prompt)
+            agent = Agent(model=self.model, tools=[])
+            response = await agent.invoke_async(prompt)
             
             logger.info(
                 f"Daily report generated successfully for user={user_id}, site={site_url}"
             )
             
-            return response.content
+            response_content = str(response) if str(response) else ""
+            return response_content
             
         except Exception as e:
             logger.exception(

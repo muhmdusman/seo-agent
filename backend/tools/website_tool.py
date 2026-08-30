@@ -1,4 +1,4 @@
-from langchain.tools import tool
+from strands import tool
 
 from services.scraper_service import ScraperService
 
