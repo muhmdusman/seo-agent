@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getCurrentUserId, logout } from '@/lib/auth';
+import { logout } from '@/lib/auth';
 import { API_BASE_URL } from '@/lib/config';
 import { apiClient } from '@/lib/api-client';
 import type { Site, SitesResponse } from '@/lib/types';
@@ -46,7 +46,6 @@ const USER_GOAL_OPTIONS = [
 ];
 
 export default function DashboardPage() {
-  const [userId, setUserId] = useState<string | null>(null);
   const [sites, setSites] = useState<Site[]>([]);
   const [sitesLoading, setSitesLoading] = useState(true);
   const [selectedSite, setSelectedSite] = useState<string>('');
@@ -65,15 +64,16 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    (async () => {
-      const id = await getCurrentUserId();
-      if (id === null) {
-        window.location.href = '/';
-        return;
-      }
-      setUserId(id);
-      await fetchSites();
-    })();
+    const accessToken = localStorage.getItem('access_token');
+    
+    if (!accessToken) {
+      // No token at all, redirect to login
+      window.location.href = '/';
+      return;
+    }
+
+    // Token exists, try to use it
+    fetchSites();
   }, []);
 
   async function fetchSites() {
@@ -86,12 +86,10 @@ export default function DashboardPage() {
     } catch (err) {
       console.error('Error fetching sites:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load sites';
-      setError(errorMessage);
-      // Retry after 2 seconds if it's a network error
-      if (errorMessage.includes('Unable to connect')) {
-        setTimeout(() => {
-          fetchSites();
-        }, 2000);
+      
+      // Don't set error if it's an auth error (user will be redirected by api-client)
+      if (!errorMessage.includes('Authentication failed')) {
+        setError(errorMessage);
       }
     } finally {
       setSitesLoading(false);
@@ -122,14 +120,32 @@ export default function DashboardPage() {
   }
 
   async function handleStartAnalysis() {
-    if (!userId) return;
+    const accessToken = localStorage.getItem('access_token');
+    
+    if (!accessToken) {
+      setError('Please login again');
+      window.location.href = '/';
+      return;
+    }
 
-    setAnalysis('');
-    setError(null);
-    setStatus('');
-    setIsAnalyzing(true);
-
+    // Decode token to get user_id (JWT tokens have payload in middle section)
     try {
+      const payload = JSON.parse(atob(accessToken.split('.')[1]));
+      const userId = payload.sub || payload.user_id || payload.email;
+      
+      if (!userId) {
+        setError('Invalid token. Please login again.');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = '/';
+        return;
+      }
+
+      setAnalysis('');
+      setError(null);
+      setStatus('');
+      setIsAnalyzing(true);
+
       const url = `${API_BASE_URL}/agent/weekly?user_id=${encodeURIComponent(
         userId
       )}&site_url=${encodeURIComponent(selectedSite)}&website_number_of_pages=${encodeURIComponent(
