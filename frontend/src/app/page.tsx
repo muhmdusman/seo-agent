@@ -17,6 +17,7 @@ const capabilities = [
 export default function Home() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
+  const [shouldShow, setShouldShow] = useState(false);
 
   useEffect(() => {
     // Check if user already has valid token
@@ -25,11 +26,15 @@ export default function Home() {
         const userId = await getCurrentUserId();
         if (userId) {
           console.log('✅ User already authenticated, redirecting to dashboard');
+          // Don't show login page, just redirect
           router.push('/dashboard');
           return;
         }
+        // Only show login page if no valid token
+        setShouldShow(true);
       } catch (error) {
         console.log('❌ No valid token, showing login page');
+        setShouldShow(true);
       } finally {
         setIsChecking(false);
       }
@@ -42,13 +47,13 @@ export default function Home() {
     window.location.href = getGoogleLoginUrl();
   };
 
-  // Show loading state while checking authentication
-  if (isChecking) {
+  // Show loading state while checking authentication or if redirecting
+  if (isChecking || !shouldShow) {
     return (
       <div className="flex flex-1 items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <div className="flex flex-col items-center gap-4">
           <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-700 border-t-indigo-500" />
-          <p className="text-sm text-slate-400">Checking authentication...</p>
+          <p className="text-sm text-slate-400">Loading...</p>
         </div>
       </div>
     );

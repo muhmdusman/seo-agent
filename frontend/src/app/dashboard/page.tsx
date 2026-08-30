@@ -79,11 +79,20 @@ export default function DashboardPage() {
   async function fetchSites() {
     try {
       setSitesLoading(true);
+      setError(null);
       const data = await apiClient.get<SitesResponse>('/search-console/sites');
       setSites(data.siteEntry ?? []);
+      setError(null);
     } catch (err) {
       console.error('Error fetching sites:', err);
-      setError('Failed to load sites');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load sites';
+      setError(errorMessage);
+      // Retry after 2 seconds if it's a network error
+      if (errorMessage.includes('Unable to connect')) {
+        setTimeout(() => {
+          fetchSites();
+        }, 2000);
+      }
     } finally {
       setSitesLoading(false);
     }
@@ -199,14 +208,14 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
-          <div className="flex items-center gap-3">
-            <BrandMark className="h-9 w-9" />
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 py-3.5">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <BrandMark className="h-8 w-8 sm:h-9 sm:w-9" />
             <div className="flex flex-col">
-              <span className="text-sm font-semibold leading-tight text-white">
+              <span className="text-xs sm:text-sm font-semibold leading-tight text-white">
                 Search Console Agent
               </span>
-              <span className="text-xs leading-tight text-slate-400">
+              <span className="text-[10px] sm:text-xs leading-tight text-slate-400">
                 Weekly SEO analysis
               </span>
             </div>
@@ -216,16 +225,16 @@ export default function DashboardPage() {
             variant="secondary" 
             size="sm" 
             onClick={() => logout()}
-            className="bg-slate-800 hover:bg-slate-700 text-white border-slate-700"
+            className="bg-slate-800 hover:bg-slate-700 text-white border-slate-700 text-xs sm:text-sm"
           >
             Log out
           </Button>
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-6 py-6">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 sm:px-6 py-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
             Analyze Your SEO Performance
           </h1>
           <p className="text-xs leading-relaxed text-slate-400">
@@ -236,7 +245,7 @@ export default function DashboardPage() {
         {sitesLoading ? (
           <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-800/50 border border-slate-700">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-indigo-500" />
-            <span className="text-sm text-slate-400">Loading properties...</span>
+            <span className="text-xs sm:text-sm text-slate-400">Loading properties...</span>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
@@ -260,7 +269,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Filters Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <FilterDropdown
                 label="Website Size *"
                 options={WEBSITE_SIZE_OPTIONS}
@@ -305,7 +314,7 @@ export default function DashboardPage() {
               <button
                 onClick={handleAnalyzeClick}
                 disabled={isAnalyzing}
-                className="group relative px-6 py-3 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white text-sm font-semibold rounded-md shadow-lg hover:shadow-indigo-500/50 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border border-purple-500/30"
+                className="group relative w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white text-sm font-semibold rounded-md shadow-lg hover:shadow-indigo-500/50 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border border-purple-500/30"
               >
                 <span className="relative z-10">
                   {isAnalyzing ? 'Analyzing...' : 'Analyze SEO Performance'}
