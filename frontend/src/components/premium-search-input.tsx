@@ -104,7 +104,7 @@ export function PremiumSearchInput({ sites, onSelect, selectedSite, error = fals
 const StyledWrapper = styled.div`
   position: relative;
   width: 100%;
-  max-width: 700px;
+  max-width: 900px;
 
   .grid {
     height: 800px;
