@@ -53,23 +53,32 @@ class ApiClient {
       },
     };
 
-    const response = await fetch(url, config);
+    try {
+      const response = await fetch(url, config);
 
-    // 401 means fully unauthenticated - clear tokens and redirect to landing page
-    if (response.status === 401) {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/';
+      // 401 means fully unauthenticated - clear tokens and redirect to landing page
+      if (response.status === 401) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          window.location.href = '/';
+        }
+        throw new Error('Authentication failed');
       }
-      throw new Error('Authentication failed');
-    }
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
-    }
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
 
-    return response.json();
+      return response.json();
+    } catch (error) {
+      // Network error or other fetch failure
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.error('Network error: Unable to reach the server');
+        throw new Error('Unable to connect to server. Please check your connection.');
+      }
+      throw error;
+    }
   }
 
   /**

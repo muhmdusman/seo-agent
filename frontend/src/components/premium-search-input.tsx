@@ -104,7 +104,7 @@ export function PremiumSearchInput({ sites, onSelect, selectedSite, error = fals
 const StyledWrapper = styled.div`
   position: relative;
   width: 100%;
-  max-width: 600px;
+  max-width: 900px;
 
   .grid {
     height: 800px;
@@ -123,7 +123,7 @@ const StyledWrapper = styled.div`
   .border,
   .darkBorderBg,
   .glow {
-    max-height: 50px;
+    max-height: 48px;
     max-width: 100%;
     height: 100%;
     width: 100%;
@@ -138,7 +138,7 @@ const StyledWrapper = styled.div`
     background-color: #0a0a0b;
     border: none;
     width: 100%;
-    height: 48px;
+    height: 45px;
     border-radius: 6px;
     color: #ffffff;
     padding-inline: 50px;
@@ -184,7 +184,7 @@ const StyledWrapper = styled.div`
     height: 20px;
     position: absolute;
     background: linear-gradient(90deg, transparent, #0a0a0b);
-    top: 14px;
+    top: 12px;
     left: 60px;
   }
 
@@ -194,7 +194,7 @@ const StyledWrapper = styled.div`
     height: 20px;
     position: absolute;
     background: #8b5cf6;
-    top: 8px;
+    top: 7px;
     left: 5px;
     filter: blur(20px);
     opacity: 0.6;
@@ -206,7 +206,7 @@ const StyledWrapper = styled.div`
   }
 
   .white {
-    max-height: 46px;
+    max-height: 43px;
     border-radius: 6px;
     filter: blur(2px);
   }
@@ -236,7 +236,7 @@ const StyledWrapper = styled.div`
   }
 
   .border {
-    max-height: 48px;
+    max-height: 45px;
     border-radius: 6px;
     filter: blur(0.5px);
   }
@@ -266,7 +266,7 @@ const StyledWrapper = styled.div`
   }
 
   .darkBorderBg {
-    max-height: 52px;
+    max-height: 49px;
   }
 
   .darkBorderBg::before {
@@ -360,13 +360,13 @@ const StyledWrapper = styled.div`
 
   #analyze-button {
     position: absolute;
-    top: 6px;
-    right: 6px;
+    top: 5px;
+    right: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2;
-    max-height: 36px;
+    max-height: 35px;
     max-width: 85px;
     height: 100%;
     width: 100%;
@@ -388,12 +388,12 @@ const StyledWrapper = styled.div`
   }
 
   .filterBorder {
-    height: 38px;
+    height: 37px;
     width: 87px;
     position: absolute;
     overflow: hidden;
-    top: 5px;
-    right: 5px;
+    top: 4px;
+    right: 4px;
     border-radius: 4px;
     pointer-events: none;
   }
@@ -434,7 +434,7 @@ const StyledWrapper = styled.div`
   #search-icon {
     position: absolute;
     left: 16px;
-    top: 12px;
+    top: 10px;
     pointer-events: none;
   }
 
