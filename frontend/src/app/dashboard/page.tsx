@@ -307,12 +307,12 @@ export default function DashboardPage() {
               <button
                 onClick={handleAnalyzeClick}
                 disabled={isAnalyzing}
-                className="group relative px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-indigo-500/50 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="group relative px-8 py-4 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white font-semibold rounded-md shadow-lg hover:shadow-indigo-500/50 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border border-purple-500/30"
               >
                 <span className="relative z-10">
                   {isAnalyzing ? 'Analyzing...' : 'Analyze SEO Performance'}
                 </span>
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-indigo-400 to-purple-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+                <div className="absolute inset-0 rounded-md bg-gradient-to-r from-indigo-400 to-purple-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
               </button>
             </div>
           </div>

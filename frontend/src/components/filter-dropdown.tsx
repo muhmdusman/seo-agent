@@ -184,7 +184,7 @@ const StyledWrapper = styled.div`
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #64748b;
+    color: #94a3b8;
   }
 
   .filter-container {
@@ -199,11 +199,11 @@ const StyledWrapper = styled.div`
   .filter-trigger {
     width: 100%;
     padding: 0.75rem 1rem;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.5rem;
+    background: #0a0a0b;
+    border: 1px solid rgba(79, 70, 229, 0.3);
+    border-radius: 6px;
     font-size: 0.875rem;
-    color: #1e293b;
+    color: #ffffff;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -212,25 +212,26 @@ const StyledWrapper = styled.div`
     gap: 0.5rem;
 
     &:hover {
-      border-color: #cbd5e1;
+      border-color: rgba(79, 70, 229, 0.5);
+      background: rgba(79, 70, 229, 0.05);
     }
 
     &:focus {
       outline: none;
-      border-color: #6366f1;
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
     }
 
     .placeholder {
-      color: #94a3b8;
+      color: #8b8b8d;
     }
 
     .selected {
-      color: #1e293b;
+      color: #ffffff;
     }
 
     .arrow {
-      color: #64748b;
+      color: #8b8b8d;
       transition: transform 0.2s;
 
       &.open {
@@ -246,11 +247,12 @@ const StyledWrapper = styled.div`
     right: 0;
     display: flex;
     flex-direction: column;
-    background-color: #0d1117;
-    border-radius: 10px;
-    padding: 10px;
+    background-color: #0a0a0b;
+    border: 1px solid rgba(79, 70, 229, 0.2);
+    border-radius: 6px;
+    padding: 6px;
     z-index: 50;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(79, 70, 229, 0.1);
     max-height: 300px;
     overflow-y: auto;
     animation: slideDown 0.2s ease-out;
@@ -268,48 +270,30 @@ const StyledWrapper = styled.div`
   }
 
   .value {
-    font-size: 15px;
+    font-size: 14px;
     background-color: transparent;
     border: none;
-    padding: 10px;
-    color: white;
+    padding: 12px;
+    color: #ffffff;
     display: flex;
     position: relative;
     gap: 8px;
     align-items: center;
     cursor: pointer;
-    border-radius: 10px;
-    transition: all 0.3s;
+    border-radius: 4px;
+    transition: all 0.15s;
     box-sizing: border-box;
 
     &:hover {
-      border: 2px solid #1a1f24;
-      color: #637185;
+      background-color: rgba(79, 70, 229, 0.15);
     }
 
     &:focus,
     &:active,
     &.active {
-      background-color: #1a1f24;
+      background-color: rgba(79, 70, 229, 0.2);
+      color: #a5b4fc;
       outline: none;
-      margin-left: 17px;
-
-      &::before {
-        opacity: 1;
-      }
-    }
-
-    &::before {
-      content: "";
-      position: absolute;
-      top: 5px;
-      left: -15px;
-      width: 5px;
-      height: 80%;
-      background-color: #2f81f7;
-      border-radius: 5px;
-      opacity: 0;
-      transition: opacity 0.3s;
     }
 
     svg {
@@ -317,12 +301,6 @@ const StyledWrapper = styled.div`
       height: 20px;
       flex-shrink: 0;
     }
-  }
-
-  .input:hover > .value:not(:hover) {
-    transition: 300ms;
-    filter: blur(1.5px);
-    transform: scale(0.95, 0.95);
   }
 
   .other-input-container {
@@ -335,19 +313,20 @@ const StyledWrapper = styled.div`
   .other-input {
     width: 100%;
     padding: 10px;
-    background-color: #1a1f24;
-    border: 1px solid #2f81f7;
-    border-radius: 8px;
-    color: white;
+    background-color: #0a0a0b;
+    border: 1px solid rgba(79, 70, 229, 0.4);
+    border-radius: 4px;
+    color: #ffffff;
     font-size: 14px;
 
     &:focus {
       outline: none;
-      border-color: #4f94ff;
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
     }
 
     &::placeholder {
-      color: #637185;
+      color: #8b8b8d;
     }
   }
 
@@ -360,28 +339,28 @@ const StyledWrapper = styled.div`
   .other-btn {
     padding: 6px 12px;
     border: none;
-    border-radius: 6px;
+    border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
     transition: all 0.2s;
 
     &.submit {
-      background-color: #2f81f7;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
       color: white;
 
       &:hover {
-        background-color: #4f94ff;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
       }
     }
 
     &.cancel {
-      background-color: #1a1f24;
-      color: #637185;
+      background-color: rgba(139, 139, 141, 0.1);
+      color: #8b8b8d;
 
       &:hover {
-        background-color: #2a2f34;
-        color: white;
+        background-color: rgba(139, 139, 141, 0.2);
+        color: #ffffff;
       }
     }
   }
