@@ -104,7 +104,7 @@ export function PremiumSearchInput({ sites, onSelect, selectedSite, error = fals
 const StyledWrapper = styled.div`
   position: relative;
   width: 100%;
-  max-width: 400px;
+  max-width: 600px;
 
   .grid {
     height: 800px;
@@ -123,26 +123,26 @@ const StyledWrapper = styled.div`
   .border,
   .darkBorderBg,
   .glow {
-    max-height: 70px;
+    max-height: 50px;
     max-width: 100%;
     height: 100%;
     width: 100%;
     position: absolute;
     overflow: hidden;
     z-index: -1;
-    border-radius: 12px;
+    border-radius: 6px;
     filter: blur(3px);
   }
 
   .input {
-    background-color: #010201;
+    background-color: #0a0a0b;
     border: none;
     width: 100%;
-    height: 56px;
-    border-radius: 10px;
-    color: white;
-    padding-inline: 59px;
-    font-size: 18px;
+    height: 48px;
+    border-radius: 6px;
+    color: #ffffff;
+    padding-inline: 50px;
+    font-size: 14px;
   }
 
   #poda {
@@ -167,7 +167,7 @@ const StyledWrapper = styled.div`
   }
 
   .input::placeholder {
-    color: #c0b9c0;
+    color: #8b8b8d;
   }
 
   .input:focus {
@@ -183,9 +183,9 @@ const StyledWrapper = styled.div`
     width: 100px;
     height: 20px;
     position: absolute;
-    background: linear-gradient(90deg, transparent, black);
-    top: 18px;
-    left: 70px;
+    background: linear-gradient(90deg, transparent, #0a0a0b);
+    top: 14px;
+    left: 60px;
   }
 
   #pink-mask {
@@ -193,11 +193,11 @@ const StyledWrapper = styled.div`
     width: 30px;
     height: 20px;
     position: absolute;
-    background: #cf30aa;
-    top: 10px;
+    background: #8b5cf6;
+    top: 8px;
     left: 5px;
     filter: blur(20px);
-    opacity: 0.8;
+    opacity: 0.6;
     transition: all 2s;
   }
 
@@ -206,8 +206,8 @@ const StyledWrapper = styled.div`
   }
 
   .white {
-    max-height: 63px;
-    border-radius: 10px;
+    max-height: 46px;
+    border-radius: 6px;
     filter: blur(2px);
   }
 
@@ -223,21 +223,21 @@ const StyledWrapper = styled.div`
     height: 600px;
     background-repeat: no-repeat;
     background-position: 0 0;
-    filter: brightness(1.4);
+    filter: brightness(1.2);
     background-image: conic-gradient(
       rgba(0, 0, 0, 0) 0%,
-      #a099d8,
+      #6366f1,
       rgba(0, 0, 0, 0) 8%,
       rgba(0, 0, 0, 0) 50%,
-      #dfa2da,
+      #8b5cf6,
       rgba(0, 0, 0, 0) 58%
     );
     transition: all 2s;
   }
 
   .border {
-    max-height: 59px;
-    border-radius: 11px;
+    max-height: 48px;
+    border-radius: 6px;
     filter: blur(0.5px);
   }
 
@@ -251,22 +251,22 @@ const StyledWrapper = styled.div`
     position: absolute;
     width: 600px;
     height: 600px;
-    filter: brightness(1.3);
+    filter: brightness(1.1);
     background-repeat: no-repeat;
     background-position: 0 0;
     background-image: conic-gradient(
-      #1c191c,
-      #402fb5 5%,
-      #1c191c 14%,
-      #1c191c 50%,
-      #cf30aa 60%,
-      #1c191c 64%
+      #0a0a0b,
+      #4f46e5 5%,
+      #0a0a0b 14%,
+      #0a0a0b 50%,
+      #7c3aed 60%,
+      #0a0a0b 64%
     );
     transition: all 2s;
   }
 
   .darkBorderBg {
-    max-height: 65px;
+    max-height: 52px;
   }
 
   .darkBorderBg::before {
@@ -283,10 +283,10 @@ const StyledWrapper = styled.div`
     background-position: 0 0;
     background-image: conic-gradient(
       rgba(0, 0, 0, 0),
-      #18116a,
+      #312e81,
       rgba(0, 0, 0, 0) 10%,
       rgba(0, 0, 0, 0) 50%,
-      #6e1b60,
+      #581c87,
       rgba(0, 0, 0, 0) 60%
     );
     transition: all 2s;
@@ -331,8 +331,8 @@ const StyledWrapper = styled.div`
   .glow {
     overflow: hidden;
     filter: blur(30px);
-    opacity: 0.4;
-    max-height: 130px;
+    opacity: 0.3;
+    max-height: 100px;
   }
 
   .glow:before {
@@ -349,10 +349,10 @@ const StyledWrapper = styled.div`
     background-position: 0 0;
     background-image: conic-gradient(
       #000,
-      #402fb5 5%,
+      #4f46e5 5%,
       #000 38%,
       #000 50%,
-      #cf30aa 60%,
+      #7c3aed 60%,
       #000 87%
     );
     transition: all 2s;
@@ -360,40 +360,41 @@ const StyledWrapper = styled.div`
 
   #analyze-button {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: 6px;
+    right: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2;
-    max-height: 40px;
-    max-width: 80px;
+    max-height: 36px;
+    max-width: 85px;
     height: 100%;
     width: 100%;
     cursor: pointer;
     isolation: isolate;
     overflow: hidden;
-    border-radius: 10px;
-    background: linear-gradient(180deg, #161329, black, #1d1b4b);
-    border: 1px solid transparent;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    border: 1px solid rgba(139, 92, 246, 0.3);
     color: white;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    transition: all 0.3s;
+    transition: all 0.2s;
 
     &:hover {
-      background: linear-gradient(180deg, #1d1b4b, #161329, black);
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
     }
   }
 
   .filterBorder {
-    height: 42px;
-    width: 82px;
+    height: 38px;
+    width: 87px;
     position: absolute;
     overflow: hidden;
-    top: 7px;
-    right: 7px;
-    border-radius: 10px;
+    top: 5px;
+    right: 5px;
+    border-radius: 4px;
     pointer-events: none;
   }
 
@@ -408,13 +409,13 @@ const StyledWrapper = styled.div`
     height: 600px;
     background-repeat: no-repeat;
     background-position: 0 0;
-    filter: brightness(1.35);
+    filter: brightness(1.2);
     background-image: conic-gradient(
       rgba(0, 0, 0, 0),
-      #3d3a4f,
+      #4f46e5,
       rgba(0, 0, 0, 0) 50%,
       rgba(0, 0, 0, 0) 50%,
-      #3d3a4f,
+      #7c3aed,
       rgba(0, 0, 0, 0) 100%
     );
     animation: rotate 4s linear infinite;
@@ -432,8 +433,8 @@ const StyledWrapper = styled.div`
 
   #search-icon {
     position: absolute;
-    left: 20px;
-    top: 15px;
+    left: 16px;
+    top: 12px;
     pointer-events: none;
   }
 
@@ -442,12 +443,15 @@ const StyledWrapper = styled.div`
     top: calc(100% + 8px);
     left: 0;
     right: 0;
-    background-color: #0d1117;
-    border-radius: 10px;
-    padding: 8px;
+    background-color: rgba(10, 10, 11, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 6px;
+    padding: 6px;
     z-index: 50;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    max-height: 250px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(99, 102, 241, 0.1);
+    max-height: 200px;
     overflow-y: auto;
   }
 
@@ -457,19 +461,19 @@ const StyledWrapper = styled.div`
     padding: 10px;
     background: transparent;
     border: none;
-    color: white;
+    color: #ffffff;
     cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.2s;
-    font-size: 14px;
+    border-radius: 4px;
+    transition: all 0.15s;
+    font-size: 13px;
 
     &:hover {
-      background-color: #1a1f24;
+      background-color: rgba(99, 102, 241, 0.15);
     }
 
     &.selected {
-      background-color: #1a1f24;
-      color: #2f81f7;
+      background-color: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
     }
   }
 `;

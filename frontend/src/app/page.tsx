@@ -1,8 +1,11 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
 import { getGoogleLoginUrl } from '@/lib/api/auth';
+import { getCurrentUserId } from '@/lib/auth';
 
 const capabilities = [
   'Pulls 30 days of Search Console performance',
@@ -12,9 +15,44 @@ const capabilities = [
 ];
 
 export default function Home() {
+  const router = useRouter();
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    // Check if user already has valid token
+    const checkAuth = async () => {
+      try {
+        const userId = await getCurrentUserId();
+        if (userId) {
+          console.log('✅ User already authenticated, redirecting to dashboard');
+          router.push('/dashboard');
+          return;
+        }
+      } catch (error) {
+        console.log('❌ No valid token, showing login page');
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
   const handleGoogleLogin = () => {
     window.location.href = getGoogleLoginUrl();
   };
+
+  // Show loading state while checking authentication
+  if (isChecking) {
+    return (
+      <div className="flex flex-1 items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="flex flex-col items-center gap-4">
+          <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-700 border-t-indigo-500" />
+          <p className="text-sm text-slate-400">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-16 min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
