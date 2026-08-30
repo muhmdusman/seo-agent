@@ -16,16 +16,39 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Search Console Agent",
+    default: "Search Console Agent | AI-Powered SEO Analysis",
     template: "%s | Search Console Agent",
   },
   description:
-    "Weekly SEO recommendations built from your Google Search Console performance data and on-page content.",
+    "AI-powered weekly SEO recommendations built from your Google Search Console performance data and on-page content. Tailored insights for your business goals.",
   applicationName: "Search Console Agent",
-  // Next serves app/icon.svg from this entry; declaring the type keeps the
-  // markup explicit rather than relying on extension sniffing.
+  keywords: ["SEO", "Search Console", "Google", "Analytics", "AI", "SEO Analysis", "Website Optimization"],
+  authors: [{ name: "Search Console Agent" }],
+  creator: "Search Console Agent",
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" }
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  manifest: "/site.webmanifest",
+  themeColor: "#4f46e5",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+  },
+  openGraph: {
+    type: "website",
+    title: "Search Console Agent | AI-Powered SEO Analysis",
+    description: "AI-powered weekly SEO recommendations tailored to your business goals",
+    siteName: "Search Console Agent",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Search Console Agent",
+    description: "AI-powered SEO analysis from your Search Console data",
   },
 };
 

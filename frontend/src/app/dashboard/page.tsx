@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react';
 import { getCurrentUserId, logout } from '@/lib/auth';
 import { API_BASE_URL } from '@/lib/config';
-import { SiteSelector } from '@/components/site-selector';
-import { LoadingSpinner } from '@/components/loading-spinner';
+import { apiClient } from '@/lib/api-client';
+import type { Site, SitesResponse } from '@/lib/types';
+import { PremiumSearchInput } from '@/components/premium-search-input';
+import { FilterDropdown } from '@/components/filter-dropdown';
+import { TerminalLoader } from '@/components/terminal-loader';
 import { AnalysisDisplay } from '@/components/analysis-display';
 import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
@@ -17,9 +20,45 @@ const KNOWN_STATUSES = [
   'Completed.',
 ];
 
+const WEBSITE_SIZE_OPTIONS = [
+  { value: '1-10', label: 'Micro (1-10 pages)' },
+  { value: '11-30', label: 'Small (11-30 pages)' },
+  { value: '31-100', label: 'Medium (31-100 pages)' },
+  { value: '101-300', label: 'Large (101-300 pages)' },
+  { value: '301+', label: 'Enterprise (301+ pages)' },
+];
+
+const WEBSITE_TYPE_OPTIONS = [
+  { value: 'ecommerce', label: 'E-commerce' },
+  { value: 'service-based', label: 'Service-based' },
+  { value: 'content/publisher', label: 'Content/Publisher' },
+  { value: 'saas', label: 'SaaS' },
+  { value: 'other', label: 'Other' },
+];
+
+const USER_GOAL_OPTIONS = [
+  { value: 'increase organic traffic', label: 'Increase Organic Traffic' },
+  { value: 'increase conversions/sales', label: 'Increase Conversions/Sales' },
+  { value: 'generate leads', label: 'Generate Leads' },
+  { value: 'improve local visibility', label: 'Improve Local Visibility' },
+  { value: 'build topical/brand authority', label: 'Build Topical/Brand Authority' },
+  { value: 'other', label: 'Other' },
+];
+
 export default function DashboardPage() {
   const [userId, setUserId] = useState<string | null>(null);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [sitesLoading, setSitesLoading] = useState(true);
   const [selectedSite, setSelectedSite] = useState<string>('');
+  const [websiteSize, setWebsiteSize] = useState<string>('');
+  const [websiteType, setWebsiteType] = useState<string>('');
+  const [userGoal, setUserGoal] = useState<string>('');
+  const [validationErrors, setValidationErrors] = useState({
+    site: false,
+    size: false,
+    type: false,
+    goal: false,
+  });
   const [status, setStatus] = useState<string>('');
   const [analysis, setAnalysis] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
@@ -33,13 +72,49 @@ export default function DashboardPage() {
         return;
       }
       setUserId(id);
+      await fetchSites();
     })();
   }, []);
 
-  async function handleSiteSelect(siteUrl: string) {
+  async function fetchSites() {
+    try {
+      setSitesLoading(true);
+      const data = await apiClient.get<SitesResponse>('/search-console/sites');
+      setSites(data.siteEntry ?? []);
+    } catch (err) {
+      console.error('Error fetching sites:', err);
+      setError('Failed to load sites');
+    } finally {
+      setSitesLoading(false);
+    }
+  }
+
+  function validateFilters(): boolean {
+    const errors = {
+      site: !selectedSite,
+      size: !websiteSize,
+      type: !websiteType,
+      goal: !userGoal,
+    };
+    
+    setValidationErrors(errors);
+    
+    return !Object.values(errors).some(err => err);
+  }
+
+  function handleAnalyzeClick() {
+    if (!validateFilters()) {
+      setError('Please select all required filters');
+      return;
+    }
+    
+    setError(null);
+    handleStartAnalysis();
+  }
+
+  async function handleStartAnalysis() {
     if (!userId) return;
 
-    setSelectedSite(siteUrl);
     setAnalysis('');
     setError(null);
     setStatus('');
@@ -48,7 +123,11 @@ export default function DashboardPage() {
     try {
       const url = `${API_BASE_URL}/agent/weekly?user_id=${encodeURIComponent(
         userId
-      )}&site_url=${encodeURIComponent(siteUrl)}`;
+      )}&site_url=${encodeURIComponent(selectedSite)}&website_number_of_pages=${encodeURIComponent(
+        websiteSize
+      )}&website_type=${encodeURIComponent(websiteType)}&user_goal=${encodeURIComponent(
+        userGoal
+      )}`;
 
       console.log('Fetching analysis from:', url);
       const res = await fetch(url, { credentials: 'include' });
@@ -69,7 +148,6 @@ export default function DashboardPage() {
         const { done, value } = await reader.read();
         if (done) {
           console.log('Stream completed');
-          // Ensure spinner is off when stream ends
           setIsAnalyzing(false);
           break;
         }
@@ -93,7 +171,6 @@ export default function DashboardPage() {
             if (KNOWN_STATUSES.includes(message)) {
               console.log('Setting status:', message);
               setStatus(message);
-              // If we receive "Completed.", ensure loading stops
               if (message === 'Completed.') {
                 console.log('Analysis completed, stopping spinner');
                 setIsAnalyzing(false);
@@ -102,7 +179,6 @@ export default function DashboardPage() {
               console.log('Setting analysis (length):', message.length);
               setAnalysis(message);
               hasReceivedAnalysis = true;
-              // Once we have the analysis, hide the loading spinner immediately
               console.log('Analysis received, hiding spinner now');
               setIsAnalyzing(false);
             }
@@ -121,50 +197,137 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <header className="glass sticky top-0 z-40 rounded-none border-x-0 border-t-0">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-6 py-3.5">
+    <div className="flex flex-1 flex-col min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
           <div className="flex items-center gap-3">
             <BrandMark className="h-9 w-9" />
             <div className="flex flex-col">
-              <span className="text-sm font-semibold leading-tight text-slate-900">
+              <span className="text-sm font-semibold leading-tight text-white">
                 Search Console Agent
               </span>
-              <span className="text-xs leading-tight text-slate-500">
+              <span className="text-xs leading-tight text-slate-400">
                 Weekly SEO analysis
               </span>
             </div>
           </div>
 
-          <Button variant="secondary" size="sm" onClick={() => logout()}>
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={() => logout()}
+            className="bg-slate-800 hover:bg-slate-700 text-white border-slate-700"
+          >
             Log out
           </Button>
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-10">
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-2xl font-semibold text-slate-900">
-            Analyze a property
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+            Analyze Your SEO Performance
           </h1>
-          <p className="text-sm leading-relaxed text-slate-600">
-            Pick a verified Search Console property. We combine 30 days of
-            performance data with your live page content, then rank the fixes.
+          <p className="text-sm leading-relaxed text-slate-400">
+            Pick a verified Search Console property and configure your analysis preferences. 
+            We combine 30 days of performance data with your live page content to deliver 
+            tailored SEO recommendations.
           </p>
         </div>
 
-        <SiteSelector onSiteSelect={handleSiteSelect} />
+        {sitesLoading ? (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-800/50 border border-slate-700">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-indigo-500" />
+            <span className="text-sm text-slate-400">Loading properties...</span>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-6">
+            {/* Site Selection */}
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Search Console Property *
+              </label>
+              <PremiumSearchInput
+                sites={sites}
+                onSelect={(siteUrl) => {
+                  setSelectedSite(siteUrl);
+                  setValidationErrors(prev => ({ ...prev, site: false }));
+                }}
+                selectedSite={selectedSite}
+                error={validationErrors.site}
+              />
+              {validationErrors.site && (
+                <p className="text-sm text-red-400">Please select a property</p>
+              )}
+            </div>
+
+            {/* Filters Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <FilterDropdown
+                label="Website Size *"
+                options={WEBSITE_SIZE_OPTIONS}
+                value={websiteSize}
+                onChange={(value) => {
+                  setWebsiteSize(value);
+                  setValidationErrors(prev => ({ ...prev, size: false }));
+                }}
+                placeholder="Select size"
+                error={validationErrors.size}
+              />
+
+              <FilterDropdown
+                label="Website Type *"
+                options={WEBSITE_TYPE_OPTIONS}
+                value={websiteType}
+                onChange={(value) => {
+                  setWebsiteType(value);
+                  setValidationErrors(prev => ({ ...prev, type: false }));
+                }}
+                placeholder="Select type"
+                error={validationErrors.type}
+                allowOther
+              />
+
+              <FilterDropdown
+                label="Primary Goal *"
+                options={USER_GOAL_OPTIONS}
+                value={userGoal}
+                onChange={(value) => {
+                  setUserGoal(value);
+                  setValidationErrors(prev => ({ ...prev, goal: false }));
+                }}
+                placeholder="Select goal"
+                error={validationErrors.goal}
+                allowOther
+              />
+            </div>
+
+            {/* Analyze Button */}
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={handleAnalyzeClick}
+                disabled={isAnalyzing}
+                className="group relative px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-indigo-500/50 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              >
+                <span className="relative z-10">
+                  {isAnalyzing ? 'Analyzing...' : 'Analyze SEO Performance'}
+                </span>
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-indigo-400 to-purple-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div
             role="alert"
-            className="glass-strong flex items-start gap-3 rounded-xl border-red-200 p-4"
+            className="flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-900/20 p-4 backdrop-blur-sm"
           >
             <svg
               viewBox="0 0 20 20"
               aria-hidden="true"
               fill="currentColor"
-              className="mt-0.5 h-4 w-4 shrink-0 text-red-600"
+              className="mt-0.5 h-4 w-4 shrink-0 text-red-400"
             >
               <path
                 fillRule="evenodd"
@@ -172,14 +335,16 @@ export default function DashboardPage() {
                 clipRule="evenodd"
               />
             </svg>
-            <p className="text-sm text-red-800">{error}</p>
+            <p className="text-sm text-red-200">{error}</p>
           </div>
         )}
 
-        {isAnalyzing && <LoadingSpinner text={status || 'Analyzing...'} />}
+        {isAnalyzing && <TerminalLoader status={status} />}
 
         {!isAnalyzing && analysis && (
-          <AnalysisDisplay siteUrl={selectedSite} analysis={analysis} />
+          <div className="rounded-xl border border-slate-700 bg-slate-800/50 backdrop-blur-sm p-6">
+            <AnalysisDisplay siteUrl={selectedSite} analysis={analysis} />
+          </div>
         )}
       </main>
     </div>
