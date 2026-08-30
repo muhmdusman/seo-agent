@@ -224,7 +224,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/50">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 py-3.5">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 py-3.5" style={{ maxWidth: '90rem' }}>
           <div className="flex items-center gap-2 sm:gap-3">
             <BrandMark className="h-8 w-8 sm:h-9 sm:w-9" />
             <div className="flex flex-col">
@@ -248,7 +248,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 sm:px-6 py-6">
+      <main className="mx-auto flex w-full flex-1 flex-col gap-4 px-4 sm:px-6 py-6" style={{ maxWidth: '90rem' }}>
         <div className="flex flex-col gap-1">
           <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
             Analyze Your SEO Performance
