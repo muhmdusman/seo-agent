@@ -11,6 +11,7 @@ Historical reports are exposed to the agent through a database tool.
 Only summaries are returned to the LLM, with a hard result limit.
 """
 
+import json
 import logging
 import time
 from datetime import date, timedelta
@@ -38,6 +39,22 @@ SKILLS_PATH = (
     / "staged-seo-growth-agent"
     / "SKILL.md"
 )
+
+# ---------------------------------------------------------------------
+# Prompt-size bounds
+# ---------------------------------------------------------------------
+# Not a hard requirement at current (small-medium, non-enterprise) site
+# sizes, but cheap insurance against an unusually query-diverse GSC
+# snapshot or a scraper that grows to cover more pages later.
+
+MAX_SNAPSHOT_LIST_ITEMS = 50
+MAX_SNAPSHOT_CHARS = 15_000
+MAX_PAGES = 150
+
+# Distinct terminal signals so callers can tell success from failure
+# instead of both paths ending in the same "Completed." string.
+STATUS_COMPLETED = "Completed."
+STATUS_FAILED = "Failed."
 
 
 class WeeklyAgent:
@@ -281,6 +298,91 @@ class WeeklyAgent:
             return []
 
     # =================================================================
+    # PROMPT INPUT BOUNDING
+    # =================================================================
+
+    @staticmethod
+    def _truncate_snapshot(obj, max_items: int = MAX_SNAPSHOT_LIST_ITEMS):
+        """
+        Recursively cap list lengths inside the Search Console snapshot,
+        without assuming its exact schema (queries/pages/dates rows etc).
+        Cheap insurance against an unusually query-diverse property; not
+        needed at current small-medium site volumes but avoids silent
+        context blowup if that ever changes.
+        """
+
+        if isinstance(obj, dict):
+            return {
+                k: WeeklyAgent._truncate_snapshot(v, max_items)
+                for k, v in obj.items()
+            }
+
+        if isinstance(obj, list):
+            truncated = obj[:max_items]
+            note = (
+                [{"_truncated": True, "original_count": len(obj)}]
+                if len(obj) > max_items
+                else []
+            )
+            return [
+                WeeklyAgent._truncate_snapshot(v, max_items)
+                for v in truncated
+            ] + note
+
+        return obj
+
+    @staticmethod
+    def _serialize_snapshot(snapshot: dict) -> str:
+
+        bounded = WeeklyAgent._truncate_snapshot(snapshot)
+        text = json.dumps(bounded, indent=2, default=str)
+
+        if len(text) > MAX_SNAPSHOT_CHARS:
+
+            logger.warning(
+                "Search Console snapshot exceeded %d chars after "
+                "truncation (%d chars). Hard-truncating.",
+                MAX_SNAPSHOT_CHARS,
+                len(text),
+            )
+
+            text = (
+                text[:MAX_SNAPSHOT_CHARS]
+                + "\n... (truncated, snapshot exceeded size limit)"
+            )
+
+        return text
+
+    @staticmethod
+    def _serialize_website(website: list[dict]) -> str:
+
+        if not website:
+            return (
+                "No website page content was available. "
+                "Base the analysis on Search Console data and explicitly "
+                "mention the missing website/sitemap data when relevant."
+            )
+
+        bounded = website[:MAX_PAGES]
+        text = json.dumps(bounded, indent=2, default=str)
+
+        if len(website) > MAX_PAGES:
+
+            logger.warning(
+                "Scraped %d pages, exceeding cap of %d. Truncating "
+                "for prompt.",
+                len(website),
+                MAX_PAGES,
+            )
+
+            text += (
+                f"\n... (truncated, {len(website) - MAX_PAGES} more "
+                "pages omitted)"
+            )
+
+        return text
+
+    # =================================================================
     # PROMPT
     # =================================================================
 
@@ -383,20 +485,11 @@ class WeeklyAgent:
         )
 
         # ---------------------------------------------------------
-        # Website data
+        # Bounded data sections
         # ---------------------------------------------------------
 
-        if website:
-
-            website_section = website
-
-        else:
-
-            website_section = (
-                "No website page content was available. "
-                "Base the analysis on Search Console data and explicitly "
-                "mention the missing website/sitemap data when relevant."
-            )
+        snapshot_section = self._serialize_snapshot(snapshot)
+        website_section = self._serialize_website(website)
 
         # ---------------------------------------------------------
         # System/skill instructions
@@ -431,8 +524,8 @@ but current Search Console and website evidence has priority.
         summary_instructions = """
 ## Historical Summary
 
-After producing the current SEO analysis, produce a concise historical
-summary for storage.
+As part of your JSON output (see Output Format below), produce a concise
+historical summary for storage alongside the full report.
 
 The summary must describe:
 - the current overall SEO state
@@ -447,6 +540,24 @@ The summary must be factual and based only on the available evidence.
 Do not include generic SEO advice.
 Do not invent trends.
 Keep the summary concise because it will be provided to future analyses.
+"""
+
+        output_instructions = """
+## Output Format
+
+Return ONLY a single valid JSON object. No markdown code fences, no
+preamble, no text before or after the JSON.
+
+The JSON object must have exactly these two keys:
+
+{
+  "report": "<the complete SEO analysis in GitHub-flavoured Markdown, following the formatting and stage rules defined in the SEO skill>",
+  "summary": "<a concise factual historical summary, significantly shorter than the report, suitable for storing in the database and using as context in future SEO analyses>"
+}
+
+Both values must be strings. Properly escape newlines, quotes, and any
+other characters so the result is valid, parseable JSON. Do not wrap the
+JSON in code fences.
 """
 
         return f"""
@@ -472,7 +583,7 @@ Website-specific considerations:
 
 ## Current Search Console Data
 
-{snapshot}
+{snapshot_section}
 
 ## Current Website Content
 
@@ -497,22 +608,7 @@ evidence.
 Do not fabricate metrics, rankings, traffic changes, technical findings,
 or historical trends.
 
-## Output Format
-
-Return exactly two sections:
-
-## SEO Report
-
-Write the complete SEO analysis in GitHub-flavoured Markdown.
-
-Follow the formatting and stage rules defined in the SEO skill.
-
-## Historical Summary
-
-Write a concise factual summary suitable for storing in the database
-and using as context in future SEO analyses.
-
-The summary should be significantly shorter than the full report.
+{output_instructions}
 """
 
     # =================================================================
@@ -523,34 +619,55 @@ The summary should be significantly shorter than the full report.
     def _extract_report_and_summary(
         response_content: str,
     ) -> tuple[str, str]:
+        """
+        Parse the LLM's structured JSON response into (report, summary).
 
-        marker = "## Historical Summary"
+        Falls back to treating the entire response as the report (with an
+        empty summary) if JSON parsing fails, and logs loudly so a
+        malformed run is visible in logs instead of silently dropping the
+        historical summary.
+        """
 
-        if marker not in response_content:
+        text = response_content.strip()
 
-            logger.warning(
-                "Historical Summary section was not found in LLM response."
+        # Defensive: strip accidental code fences even though the prompt
+        # explicitly asks the model not to use them.
+        if text.startswith("```"):
+            text = text.strip("`").strip()
+            if text.lower().startswith("json"):
+                text = text[len("json"):].strip()
+
+        try:
+            data = json.loads(text)
+
+            if not isinstance(data, dict):
+                raise ValueError(
+                    f"Expected a JSON object, got {type(data).__name__}"
+                )
+
+            report = str(data.get("report", "")).strip()
+            summary = str(data.get("summary", "")).strip()
+
+            if not report:
+                raise ValueError("Parsed JSON had an empty 'report' field.")
+
+            return report, summary
+
+        except (json.JSONDecodeError, ValueError) as exc:
+
+            logger.error(
+                "Failed to parse structured LLM output as JSON (%s). "
+                "Falling back to raw response as report with no summary. "
+                "This run will NOT have a stored historical summary.",
+                exc,
             )
 
-            return (
-                response_content.strip(),
-                "",
+            logger.error(
+                "Raw response preview: %r",
+                text[:1000],
             )
 
-        report, summary = response_content.split(
-            marker,
-            1,
-        )
-
-        # Remove our report heading if present.
-        report = report.strip()
-
-        if report.startswith("## SEO Report"):
-            report = report[len("## SEO Report"):].strip()
-
-        summary = summary.strip()
-
-        return report, summary
+            return text, ""
 
     # =================================================================
     # MAIN RUN
@@ -761,7 +878,7 @@ The summary should be significantly shorter than the full report.
             )
             logger.info("#" * 100)
 
-            yield "Completed."
+            yield STATUS_COMPLETED
 
         except Exception:
 
@@ -795,4 +912,7 @@ The summary should be significantly shorter than the full report.
                 "continues."
             )
 
-            yield "Completed."
+            # Distinct from STATUS_COMPLETED so callers can reliably tell
+            # a failed run apart from a successful one instead of both
+            # paths ending on the same "Completed." sentinel.
+            yield STATUS_FAILED
