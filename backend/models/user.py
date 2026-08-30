@@ -44,6 +44,11 @@ class User(Base, TimestampMixin):
     cascade="all, delete-orphan",
     )
 
+    seo_reports = relationship(
+    "SEOReport",
+    back_populates="user",
+    cascade="all, delete-orphan",
+    )
     
 
     
