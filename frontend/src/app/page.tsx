@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
 import { getGoogleLoginUrl } from '@/lib/api/auth';
@@ -12,9 +14,30 @@ const capabilities = [
 ];
 
 export default function Home() {
+  const router = useRouter();
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    // Simple check: if access token exists in localStorage, redirect to dashboard
+    const accessToken = localStorage.getItem('access_token');
+    
+    if (accessToken) {
+      console.log('✅ Access token found, redirecting to dashboard');
+      router.push('/dashboard');
+    } else {
+      console.log('❌ No access token, showing login page');
+      setIsChecking(false);
+    }
+  }, [router]);
+
   const handleGoogleLogin = () => {
     window.location.href = getGoogleLoginUrl();
   };
+
+  // Show loading only while checking localStorage
+  if (isChecking) {
+    return null; // Return nothing to avoid any flash
+  }
 
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-16 min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">

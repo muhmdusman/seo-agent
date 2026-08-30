@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import styled from 'styled-components';
 
 interface TerminalLoaderProps {
   status?: string;
@@ -19,120 +18,30 @@ export function TerminalLoader({ status }: TerminalLoaderProps) {
   const displayText = status ? (statusMessages[status as keyof typeof statusMessages] || statusMessages.default) : statusMessages.default;
 
   return (
-    <StyledWrapper>
-      <div className="terminal-loader">
-        <div className="terminal-header">
-          <div className="terminal-title">Status</div>
-          <div className="terminal-controls">
-            <div className="control close" />
-            <div className="control minimize" />
-            <div className="control maximize" />
-          </div>
+    <div className="flex flex-col items-center justify-center py-12 gap-6">
+      {/* Spinner */}
+      <div className="relative w-16 h-16">
+        {/* Outer rotating ring */}
+        <div className="absolute inset-0 border-4 border-indigo-500/20 rounded-full"></div>
+        
+        {/* Animated gradient ring */}
+        <div className="absolute inset-0 border-4 border-transparent border-t-indigo-500 border-r-purple-500 rounded-full animate-spin"></div>
+        
+        {/* Inner pulsing dot */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-3 h-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-pulse"></div>
         </div>
-        <div className="text">{displayText}</div>
       </div>
-    </StyledWrapper>
+
+      {/* Status Text */}
+      <div className="flex flex-col items-center gap-2">
+        <p className="text-white text-lg font-medium">{displayText}</p>
+        <div className="flex gap-1">
+          <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+          <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+          <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+        </div>
+      </div>
+    </div>
   );
 }
-
-const StyledWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 2rem 0;
-
-  @keyframes blinkCursor {
-    50% {
-      border-right-color: transparent;
-    }
-  }
-
-  @keyframes typeAndDelete {
-    0%,
-    10% {
-      width: 0;
-    }
-    45%,
-    55% {
-      width: 100%;
-    }
-    90%,
-    100% {
-      width: 0;
-    }
-  }
-
-  .terminal-loader {
-    border: 0.1em solid #333;
-    background-color: #1a1a1a;
-    color: #0f0;
-    font-family: "Courier New", Courier, monospace;
-    font-size: 1em;
-    padding: 1.5em 1em;
-    width: 20em;
-    max-width: 90%;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-    position: relative;
-    overflow: hidden;
-    box-sizing: border-box;
-  }
-
-  .terminal-header {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1.5em;
-    background-color: #333;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
-    padding: 0 0.4em;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .terminal-controls {
-    display: flex;
-    gap: 0.4em;
-  }
-
-  .control {
-    width: 0.6em;
-    height: 0.6em;
-    border-radius: 50%;
-    background-color: #777;
-  }
-
-  .control.close {
-    background-color: #e33;
-  }
-
-  .control.minimize {
-    background-color: #ee0;
-  }
-
-  .control.maximize {
-    background-color: #0b0;
-  }
-
-  .terminal-title {
-    line-height: 1.5em;
-    color: #eee;
-    font-size: 0.8em;
-  }
-
-  .text {
-    display: inline-block;
-    white-space: nowrap;
-    overflow: hidden;
-    border-right: 0.2em solid #0f0;
-    animation:
-      typeAndDelete 4s steps(20) infinite,
-      blinkCursor 0.5s step-end infinite alternate;
-    margin-top: 1.5em;
-    max-width: 100%;
-  }
-`;
