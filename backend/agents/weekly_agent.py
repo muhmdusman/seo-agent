@@ -623,6 +623,9 @@ class WeeklyAgent:
         self,
         user_id: str,
         site_url: str,
+        website_number_of_pages: str,
+        website_type: str,
+        user_goal: str,
     ):
 
         started_total = time.perf_counter()
@@ -639,6 +642,18 @@ class WeeklyAgent:
         logger.info(
             "site_url=%s",
             site_url,
+        )
+        logger.info(
+            "website_number_of_pages=%s",
+            website_number_of_pages,
+        )
+        logger.info(
+            "website_type=%s",
+            website_type,
+        )
+        logger.info(
+            "user_goal=%s",
+            user_goal,
         )
         logger.info("#" * 100)
 
@@ -969,6 +984,21 @@ class WeeklyAgent:
             logger.info("CHECKPOINT 5: BUILDING LLM PROMPT")
             logger.info("=" * 100)
 
+            logger.info(
+                "Website number of pages=%s",
+                website_number_of_pages,
+            )
+
+            logger.info(
+                "Website type=%s",
+                website_type,
+            )
+
+            logger.info(
+                "User goal=%s",
+                user_goal,
+            )
+
             if website:
 
                 website_section = website
@@ -995,30 +1025,69 @@ class WeeklyAgent:
                     "No website content available."
                 )
 
+            # Map website size to context
+            size_context = {
+                "1-10": "a micro website (1-10 pages) - focus on maximizing value from limited content",
+                "11-30": "a small website (11-30 pages) - focus on foundational SEO and content expansion opportunities",
+                "31-100": "a medium-sized website (31-100 pages) - focus on content optimization and technical SEO",
+                "101-300": "a large website (101-300 pages) - focus on scaling SEO efforts and automation",
+                "301+": "an enterprise website (301+ pages) - focus on enterprise-level SEO strategy and site architecture"
+            }.get(website_number_of_pages, "")
+
+            # Map user goal to specific focus
+            goal_focus = {
+                "increase organic traffic": "driving more organic search traffic through keyword optimization and content strategy",
+                "increase conversions/sales": "improving conversion rates and sales through better user intent targeting and landing page optimization",
+                "generate leads": "generating qualified leads through targeted content and conversion optimization",
+                "improve local visibility": "enhancing local search presence through local SEO tactics and Google Business Profile optimization",
+                "build topical/brand authority": "establishing topical authority and brand recognition through content depth and E-E-A-T signals"
+            }.get(user_goal.lower(), user_goal)
+
+            # Website type specific considerations
+            type_considerations = {
+                "ecommerce": "Focus on product pages, category optimization, structured data for products, and conversion funnels.",
+                "service-based": "Focus on service pages, local SEO if applicable, trust signals, and lead generation.",
+                "content/publisher": "Focus on content quality, topical authority, internal linking, and user engagement metrics.",
+                "saas": "Focus on feature pages, comparison content, trial/signup conversion optimization, and technical documentation.",
+                "other": "Analyze the site structure and provide tailored recommendations."
+            }.get(website_type.lower(), "")
+
             prompt = f"""
-Search Console:
+You are analyzing {size_context}.
+
+Website Type: {website_type}
+Primary Goal: {goal_focus}
+
+{type_considerations}
+
+Search Console Data:
 
 {snapshot}
 
-Website:
+Website Content:
 
 {website_section}
 
-Give me the five highest-impact SEO improvements.
+Based on the above context, provide the five highest-impact SEO improvements specifically tailored to:
+- The website's size ({website_number_of_pages} pages)
+- The business type ({website_type})
+- The primary goal ({user_goal})
 
 Format the answer as GitHub-flavoured Markdown, because the dashboard renders 
 it as Markdown rather than plain text:
 
-- Open with one `##` sentence summarising the account's current state.
+- Open with one `##` sentence summarising the account's current state and how it relates to their goal of {user_goal}.
 - Give each improvement its own `###` heading, numbered 1 to 5, ordered by 
-  impact. Put the plain title in the heading with no bold markers around it.
+  impact for achieving "{user_goal}". Put the plain title in the heading with no bold markers around it.
 - Under each heading use `**Issue**`, `**Fix**`, and `**Why it matters**` as 
   bold inline labels, followed by short bullet lists.
+- In the "Why it matters" section, explicitly connect each recommendation to the user's goal of {user_goal}.
 - Quote every query, URL, and metric from the data above so each claim is 
   traceable. Use backticks for queries, URLs, and tag names.
 - Use a Markdown table when comparing more than two numbers.
 - Do not use emoji, horizontal rules, or bold text inside headings.
 - Do not wrap the whole response in a code fence.
+- Tailor recommendations to the website type ({website_type}) - for example, for ecommerce sites prioritize product page optimization, for service-based sites focus on local SEO and trust signals.
 """
 
             logger.info(

@@ -2,21 +2,41 @@
   <defs>
     <linearGradient id="seoBg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#4f46e5" />
-      <stop offset="1" stop-color="#7c3aed" />
+      <stop offset="0.5" stop-color="#6366f1" />
+      <stop offset="1" stop-color="#a855f7" />
     </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.3" />
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
   </defs>
 
-  <rect width="64" height="64" rx="14" fill="url(#seoBg)" />
+  <!-- Background with gradient -->
+  <rect width="64" height="64" rx="16" fill="url(#seoBg)" />
+  
+  <!-- Subtle glow overlay -->
+  <rect width="64" height="64" rx="16" fill="url(#glow)" opacity="0.4" />
 
-  <!-- Search lens holding a rising bar chart: search performance, i.e. SEO. -->
-  <g fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round">
-    <circle cx="28" cy="27" r="13" />
-    <path d="M37.6 36.6 L47.5 46.5" stroke-width="6" />
+  <!-- Search lens with shadow -->
+  <g filter="url(#shadow)">
+    <g fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="27" r="13" />
+      <path d="M37.6 36.6 L47.5 46.5" stroke-width="6" />
+    </g>
   </g>
 
-  <g fill="#ffffff">
-    <rect x="21.5" y="28" width="4" height="6" rx="1.2" />
-    <rect x="26" y="23.5" width="4" height="10.5" rx="1.2" />
-    <rect x="30.5" y="19.5" width="4" height="14.5" rx="1.2" />
+  <!-- Rising bar chart with gradient -->
+  <g filter="url(#shadow)">
+    <rect x="21.5" y="28" width="4" height="6" rx="1.2" fill="#ffffff" opacity="0.9" />
+    <rect x="26" y="23.5" width="4" height="10.5" rx="1.2" fill="#ffffff" opacity="0.95" />
+    <rect x="30.5" y="19.5" width="4" height="14.5" rx="1.2" fill="#ffffff" />
   </g>
+  
+  <!-- Sparkle effect -->
+  <circle cx="44" cy="20" r="1.5" fill="#ffffff" opacity="0.8" />
+  <circle cx="18" cy="14" r="1" fill="#ffffff" opacity="0.6" />
+  <circle cx="50" cy="52" r="1.2" fill="#ffffff" opacity="0.7" />
 </svg>

@@ -17,6 +17,9 @@ router = APIRouter(
 async def weekly_agent(
     user_id: str,
     site_url: str,
+    website_number_of_pages: str,
+    website_type: str,
+    user_goal: str,
     db: AsyncSession = Depends(get_db),
 ):
 
@@ -27,6 +30,9 @@ async def weekly_agent(
         async for chunk in agent.run(
             user_id=user_id,
             site_url=site_url,
+            website_number_of_pages=website_number_of_pages,
+            website_type=website_type,
+            user_goal=user_goal,
         ):
             yield f"data: {json.dumps({'message': chunk})}\n\n"
 
