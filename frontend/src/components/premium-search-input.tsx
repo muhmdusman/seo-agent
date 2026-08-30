@@ -369,7 +369,7 @@ const StyledWrapper = styled.div`
     max-height: 35px;
     max-width: 85px;
     height: 100%;
-    width: 100%;
+    width: 200%;
     cursor: pointer;
     isolation: isolate;
     overflow: hidden;
