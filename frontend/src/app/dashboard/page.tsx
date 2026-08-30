@@ -223,15 +223,13 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-6 py-6">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
             Analyze Your SEO Performance
           </h1>
-          <p className="text-sm leading-relaxed text-slate-400">
-            Pick a verified Search Console property and configure your analysis preferences. 
-            We combine 30 days of performance data with your live page content to deliver 
-            tailored SEO recommendations.
+          <p className="text-xs leading-relaxed text-slate-400">
+            Pick a verified Search Console property and configure your analysis preferences.
           </p>
         </div>
 
@@ -241,9 +239,9 @@ export default function DashboardPage() {
             <span className="text-sm text-slate-400">Loading properties...</span>
           </div>
         ) : (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
             {/* Site Selection */}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-medium uppercase tracking-wide text-slate-400">
                 Search Console Property *
               </label>
@@ -257,12 +255,12 @@ export default function DashboardPage() {
                 error={validationErrors.site}
               />
               {validationErrors.site && (
-                <p className="text-sm text-red-400">Please select a property</p>
+                <p className="text-xs text-red-400">Please select a property</p>
               )}
             </div>
 
             {/* Filters Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FilterDropdown
                 label="Website Size *"
                 options={WEBSITE_SIZE_OPTIONS}
@@ -303,11 +301,11 @@ export default function DashboardPage() {
             </div>
 
             {/* Analyze Button */}
-            <div className="flex justify-center pt-4">
+            <div className="flex justify-center pt-2">
               <button
                 onClick={handleAnalyzeClick}
                 disabled={isAnalyzing}
-                className="group relative px-8 py-4 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white font-semibold rounded-md shadow-lg hover:shadow-indigo-500/50 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border border-purple-500/30"
+                className="group relative px-6 py-3 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white text-sm font-semibold rounded-md shadow-lg hover:shadow-indigo-500/50 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 border border-purple-500/30"
               >
                 <span className="relative z-10">
                   {isAnalyzing ? 'Analyzing...' : 'Analyze SEO Performance'}

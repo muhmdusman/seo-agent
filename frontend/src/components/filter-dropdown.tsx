@@ -198,11 +198,11 @@ const StyledWrapper = styled.div`
 
   .filter-trigger {
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 0.625rem 0.875rem;
     background: #0a0a0b;
     border: 1px solid rgba(79, 70, 229, 0.3);
     border-radius: 6px;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     color: #ffffff;
     cursor: pointer;
     transition: all 0.2s;
@@ -247,13 +247,15 @@ const StyledWrapper = styled.div`
     right: 0;
     display: flex;
     flex-direction: column;
-    background-color: #0a0a0b;
+    background-color: rgba(10, 10, 11, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(79, 70, 229, 0.2);
     border-radius: 6px;
     padding: 6px;
     z-index: 50;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(79, 70, 229, 0.1);
-    max-height: 300px;
+    max-height: 180px;
     overflow-y: auto;
     animation: slideDown 0.2s ease-out;
 
@@ -270,10 +272,10 @@ const StyledWrapper = styled.div`
   }
 
   .value {
-    font-size: 14px;
+    font-size: 13px;
     background-color: transparent;
     border: none;
-    padding: 12px;
+    padding: 10px;
     color: #ffffff;
     display: flex;
     position: relative;
@@ -297,8 +299,8 @@ const StyledWrapper = styled.div`
     }
 
     svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       flex-shrink: 0;
     }
   }
