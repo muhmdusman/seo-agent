@@ -1,11 +1,13 @@
 import json
+import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.weekly_agent import WeeklyAgent
-from db.dbconfig import get_db
+from db.dbconfig import AsyncSessionLocal
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/agent",
@@ -20,23 +22,55 @@ async def weekly_agent(
     website_number_of_pages: str,
     website_type: str,
     user_goal: str,
-    db: AsyncSession = Depends(get_db),
 ):
+    """Stream a weekly SEO analysis as Server-Sent Events.
 
-    agent = WeeklyAgent(db)
+    This route deliberately does not take `db: AsyncSession = Depends(get_db)`.
+    FastAPI closes dependency-provided sessions as soon as the handler returns,
+    which for a StreamingResponse is *before* the generator body runs. The
+    agent would then be holding a session whose transaction has already been
+    torn down, and the first write attempt failed with
+    "current transaction is aborted, commands ignored until end of transaction
+    block". The stream owns its own session instead, for the full lifetime of
+    the stream.
+    """
 
     async def stream():
+        async with AsyncSessionLocal() as db:
+            agent = WeeklyAgent(db)
 
-        async for chunk in agent.run(
-            user_id=user_id,
-            site_url=site_url,
-            website_number_of_pages=website_number_of_pages,
-            website_type=website_type,
-            user_goal=user_goal,
-        ):
-            yield f"data: {json.dumps({'message': chunk})}\n\n"
+            try:
+                async for chunk in agent.run(
+                    user_id=user_id,
+                    site_url=site_url,
+                    website_number_of_pages=website_number_of_pages,
+                    website_type=website_type,
+                    user_goal=user_goal,
+                ):
+                    yield f"data: {json.dumps({'message': chunk})}\n\n"
+
+            except Exception:
+                # The generator is already streaming, so an HTTPException here
+                # could not change the status code. Report in-band instead of
+                # letting the connection drop with no explanation.
+                logger.exception("Weekly agent stream failed")
+
+                await db.rollback()
+
+                message = (
+                    "The analysis stopped unexpectedly. "
+                    "Check the server logs for details."
+                )
+                yield f"data: {json.dumps({'message': message})}\n\n"
+                yield f"data: {json.dumps({'message': 'Failed.'})}\n\n"
 
     return StreamingResponse(
         stream(),
         media_type="text/event-stream",
+        headers={
+            # Without this, a proxy may buffer the whole stream and defeat the
+            # point of streaming progress.
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )

@@ -1,0 +1,28 @@
+# Shell scripts must keep LF endings on every platform.
+# With core.autocrlf=true (the Windows Git default) a checkout would otherwise
+# rewrite them to CRLF, and bash treats the trailing CR as part of the last
+# token on each line, which breaks redirects, variable values, and shebangs.
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Same reasoning for files consumed by Linux containers.
+Dockerfile text eol=lf
+*.conf text eol=lf
+.env.example text eol=lf
+
+# PowerShell is fine with either, but CRLF is the native convention.
+*.ps1 text eol=crlf
+
+# Let Git normalize everything else in the working tree.
+* text=auto
+
+# Never touch binaries.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text
+*.pdf binary
+*.zip binary
+*.mp4 binary

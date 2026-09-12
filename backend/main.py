@@ -1,3 +1,13 @@
+import asyncio
+import sys
+
+# psycopg's async driver does not support Windows' default Proactor event loop,
+# so the policy has to be set before uvicorn creates the loop. Importing this
+# module early enough is what makes `uvicorn main:app` work on Windows.
+# The Celery worker sets the same policy independently in workers/.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from contextlib import asynccontextmanager
 from core.redis_config import redis_client
 from fastapi import FastAPI
@@ -13,6 +23,9 @@ import logging
 
 
 
+logger = logging.getLogger(__name__)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
@@ -21,18 +34,19 @@ async def lifespan(app: FastAPI):
     async with engine.connect() as connection:
         await connection.execute(text("SELECT 1"))
 
-    print("✅ Database connected")
+    # Plain ASCII on purpose: the Windows console defaults to cp1252, where
+    # printing non-encodable characters raises UnicodeEncodeError and takes
+    # the whole application startup down with it.
+    logger.info("Database connected")
 
     await redis_client.ping()
-    print("connected to redis")
+    logger.info("Redis connected")
 
     yield
+
     await redis_client.aclose()
-
     await engine.dispose()
-    print("👋 Database engine disposed")
-
-    print("👋 Application shutting down")
+    logger.info("Database engine disposed, application shutting down")
 
 
 app = FastAPI(

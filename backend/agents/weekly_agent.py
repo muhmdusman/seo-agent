@@ -32,24 +32,125 @@ from services.seo_reports_service import SEOReportsService
 logger = logging.getLogger(__name__)
 
 
-# Adjust this path if your skills.md lives somewhere else.
+# The skill lives in backend/system-prompt/SKILL.md. This used to point at
+# backend/skills/staged-seo-growth-agent/, which does not exist, so the loader
+# fell back to "no skill available" and the 9-stage framework never reached
+# the model.
 SKILLS_PATH = (
     Path(__file__).resolve().parent.parent
-    / "skills"
-    / "staged-seo-growth-agent"
+    / "system-prompt"
     / "SKILL.md"
 )
 
 # ---------------------------------------------------------------------
 # Prompt-size bounds
 # ---------------------------------------------------------------------
-# Not a hard requirement at current (small-medium, non-enterprise) site
-# sizes, but cheap insurance against an unusually query-diverse GSC
-# snapshot or a scraper that grows to cover more pages later.
+# These are driven by the provider's tokens-per-minute ceiling, not by the
+# model's context window. gpt-oss-120b on Groq has a 131k context but the
+# free tier only allows ~8,000 tokens per minute, counting prompt and
+# completion together. Exceeding it returns 429 regardless of how much
+# context the model could technically accept.
+#
+# At roughly 4 characters per token, the demo profile below targets about
+# 4,500 prompt tokens plus 2,500 output tokens, leaving headroom under
+# 8,000 for a single request.
+#
+# Set SEO_DEMO_MODE=false in .env to restore the generous profile once the
+# provider account has a higher allowance.
 
-MAX_SNAPSHOT_LIST_ITEMS = 50
-MAX_SNAPSHOT_CHARS = 15_000
-MAX_PAGES = 150
+# Measured, not guessed. Groq rejected an 11,535 char prompt as 7,139 tokens,
+# which is ~1.6 chars per token. URLs, dense JSON punctuation, and non-ASCII
+# characters in scraped copy all tokenize far worse than prose, so the usual
+# 4-chars-per-token rule of thumb is dangerously optimistic here.
+CHARS_PER_TOKEN = 1.6
+
+# The provider's hard per-minute ceiling for this model and tier.
+TPM_LIMIT = 8_000
+
+# Headroom for things outside the prompt string: the Strands system prompt,
+# tool schemas, and tokenizer variance. Sites whose copy is not mostly English
+# tokenize considerably worse per character, so this margin is what keeps a
+# different property from tipping the request over the limit.
+SAFETY_TOKENS = 1_400
+
+if settings.SEO_DEMO_MODE:
+    # Reasoning tokens are billed as output, so the reasoning budget and the
+    # report share this allowance.
+    MAX_OUTPUT_TOKENS = 3_000
+    MAX_SKILL_CHARS = 1_600
+    MAX_SNAPSHOT_CHARS = 1_400
+    MAX_SNAPSHOT_LIST_ITEMS = 5
+    MAX_PAGES = 5
+    MAX_FIELD_CHARS = 90
+    # Each tool call re-sends the entire prompt on the next turn, which
+    # doubles token spend and breaks the per-minute budget. Historical
+    # context is still supplied inline as a summary, so the agent keeps its
+    # cross-run memory; it just cannot fetch more on demand.
+    ENABLE_HISTORICAL_TOOL = False
+else:
+    MAX_OUTPUT_TOKENS = 8_192
+    MAX_SKILL_CHARS = 20_000
+    MAX_SNAPSHOT_CHARS = 15_000
+    MAX_SNAPSHOT_LIST_ITEMS = 50
+    MAX_PAGES = 150
+    MAX_FIELD_CHARS = 1_000
+    ENABLE_HISTORICAL_TOOL = True
+
+
+# Everything the prompt string may occupy, derived from the limits above.
+MAX_PROMPT_CHARS = int(
+    (TPM_LIMIT - SAFETY_TOKENS - MAX_OUTPUT_TOKENS) * CHARS_PER_TOKEN
+)
+
+
+def _clip(text: str, limit: int, label: str) -> str:
+    """Trim text to a character limit, preferring the last line boundary."""
+
+    if len(text) <= limit:
+        return text
+
+    window = text[:limit]
+    cut = window.rfind("\n")
+
+    # Only honour the line boundary if it is not throwing away too much.
+    if cut < limit * 0.6:
+        cut = limit
+
+    logger.warning(
+        "Trimmed %s from %d to %d chars to stay inside the token budget",
+        label,
+        len(text),
+        cut,
+    )
+
+    return window[:cut] + f"\n... ({label} truncated for token budget)"
+
+
+def _enforce_prompt_budget(prompt: str) -> str:
+    """Last-resort guard so a prompt can never exceed the provider's ceiling.
+
+    Cuts from the middle, where the Search Console and page data sit. The head
+    holds the skill and framing, the tail holds the output contract, and losing
+    either produces a malformed report rather than a shallower one.
+    """
+
+    if len(prompt) <= MAX_PROMPT_CHARS:
+        return prompt
+
+    marker = "\n\n... (evidence truncated to fit the provider token budget)\n\n"
+    keep = MAX_PROMPT_CHARS - len(marker)
+    head = int(keep * 0.55)
+    tail = keep - head
+
+    logger.warning(
+        "Prompt %d chars exceeded the %d char ceiling; cut %d chars from the "
+        "middle. Analysis depth is reduced for this run.",
+        len(prompt),
+        MAX_PROMPT_CHARS,
+        len(prompt) - MAX_PROMPT_CHARS,
+    )
+
+    return prompt[:head] + marker + prompt[-tail:]
 
 # Distinct terminal signals so callers can tell success from failure
 # instead of both paths ending in the same "Completed." string.
@@ -99,21 +200,35 @@ class WeeklyAgent:
         # Load SEO skill
         # ---------------------------------------------------------
 
-        self.skills_content = self._load_skills()
+        self.skills_content = _clip(
+            self._load_skills(),
+            MAX_SKILL_CHARS,
+            "SEO skill",
+        )
 
         # ---------------------------------------------------------
         # LLM
         # ---------------------------------------------------------
 
-        logger.info("Initializing Mistral LLM")
+        logger.info("Initializing LLM: %s", settings.LLM_MODEL_ID)
 
         self.model = LiteLLMModel(
-            model_id="mistral/mistral-small-latest",
+            model_id=settings.LLM_MODEL_ID,
             client_args={
-                "api_key": settings.MISTRAL_API_KEY,
+                "api_key": settings.LLM_API_KEY,
             },
             params={
                 "temperature": 0,
+                # Covers reasoning and the report together: on this model
+                # reasoning tokens are billed as output, so they share the
+                # same allowance.
+                "max_tokens": MAX_OUTPUT_TOKENS,
+                # "low" leaves more of that allowance for the report itself
+                # rather than the private chain of thought, which matters when
+                # the entire request has to fit inside 8k tokens per minute.
+                "reasoning_effort": (
+                    "low" if settings.SEO_DEMO_MODE else "medium"
+                ),
             },
         )
 
@@ -335,23 +450,12 @@ class WeeklyAgent:
     def _serialize_snapshot(snapshot: dict) -> str:
 
         bounded = WeeklyAgent._truncate_snapshot(snapshot)
-        text = json.dumps(bounded, indent=2, default=str)
 
-        if len(text) > MAX_SNAPSHOT_CHARS:
+        # Compact separators rather than indent=2: pretty-printing roughly
+        # doubles the character count and the model gains nothing from it.
+        text = json.dumps(bounded, separators=(",", ":"), default=str)
 
-            logger.warning(
-                "Search Console snapshot exceeded %d chars after "
-                "truncation (%d chars). Hard-truncating.",
-                MAX_SNAPSHOT_CHARS,
-                len(text),
-            )
-
-            text = (
-                text[:MAX_SNAPSHOT_CHARS]
-                + "\n... (truncated, snapshot exceeded size limit)"
-            )
-
-        return text
+        return _clip(text, MAX_SNAPSHOT_CHARS, "Search Console snapshot")
 
     @staticmethod
     def _serialize_website(website: list[dict]) -> str:
@@ -364,23 +468,42 @@ class WeeklyAgent:
             )
 
         bounded = website[:MAX_PAGES]
-        text = json.dumps(bounded, indent=2, default=str)
+
+        # Keep only the fields the framework actually reasons over, and clip
+        # each one. Full page records carry long heading lists that dominate
+        # the prompt without changing any finding.
+        compact = []
+
+        for page in bounded:
+            record = {
+                "url": str(page.get("url") or "")[:MAX_FIELD_CHARS],
+                "title": str(page.get("title") or "")[:MAX_FIELD_CHARS],
+                "meta": str(page.get("meta_description") or "")[:MAX_FIELD_CHARS],
+                "h1": [str(h)[:120] for h in (page.get("h1") or [])[:3]],
+                "h2": [str(h)[:120] for h in (page.get("h2") or [])[:5]],
+            }
+
+            # Canonical only matters when it disagrees with the page url.
+            canonical = str(page.get("canonical") or "")
+            if canonical and canonical != record["url"]:
+                record["canonical"] = canonical[:MAX_FIELD_CHARS]
+
+            compact.append({k: v for k, v in record.items() if v})
+
+        text = json.dumps(compact, separators=(",", ":"), default=str)
 
         if len(website) > MAX_PAGES:
-
             logger.warning(
-                "Scraped %d pages, exceeding cap of %d. Truncating "
-                "for prompt.",
+                "Scraped %d pages, capped at %d for the prompt",
                 len(website),
                 MAX_PAGES,
             )
-
             text += (
-                f"\n... (truncated, {len(website) - MAX_PAGES} more "
-                "pages omitted)"
+                f"\n... ({len(website) - MAX_PAGES} more pages omitted; "
+                "sample is GSC-prioritized)"
             )
 
-        return text
+        return _clip(text, MAX_PAGES * MAX_FIELD_CHARS * 3, "website pages")
 
     # =================================================================
     # PROMPT
@@ -776,11 +899,33 @@ or historical trends.
 
             yield "Analyzing current and historical SEO data..."
 
+            prompt = _enforce_prompt_budget(prompt)
+
+            estimated_tokens = int(len(prompt) / CHARS_PER_TOKEN)
+
+            logger.info(
+                "Prompt %d/%d chars (~%d tokens) + %d output + %d safety "
+                "= ~%d of %d TPM",
+                len(prompt),
+                MAX_PROMPT_CHARS,
+                estimated_tokens,
+                MAX_OUTPUT_TOKENS,
+                SAFETY_TOKENS,
+                estimated_tokens + MAX_OUTPUT_TOKENS + SAFETY_TOKENS,
+                TPM_LIMIT,
+            )
+
             agent = Agent(
                 model=self.model,
-                tools=[
-                    self.historical_reports_tool,
-                ],
+                tools=(
+                    [self.historical_reports_tool]
+                    if ENABLE_HISTORICAL_TOOL
+                    else []
+                ),
+                # Strands' default handler prints every reasoning token to
+                # stdout, which floods backend.log with the model's private
+                # chain of thought. The result is read from invoke_async.
+                callback_handler=None,
             )
 
             response = await agent.invoke_async(

@@ -25,12 +25,16 @@ class DailyAgent:
     def __init__(self, db):
         self.user_tool = create_user_context_tool(db)
         self.model = LiteLLMModel(
-            model_id="mistral/mistral-small-latest",
+            model_id=settings.LLM_MODEL_ID,
             client_args={
-                "api_key": settings.MISTRAL_API_KEY,
+                "api_key": settings.LLM_API_KEY,
             },
             params={
                 "temperature": 0,
+                # Daily digests are capped at roughly 500 words, so this is
+                # deliberately smaller than the weekly agent's budget.
+                "max_tokens": 2048,
+                "reasoning_effort": "medium",
             },
         )
 
