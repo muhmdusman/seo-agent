@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Select,
   SelectContent,
@@ -27,11 +27,7 @@ export function SiteSelector({ onSiteSelect }: SiteSelectorProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchSites();
-  }, []);
-
-  async function fetchSites() {
+  const fetchSites = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -47,7 +43,15 @@ export function SiteSelector({ onSiteSelect }: SiteSelectorProps) {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void fetchSites();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [fetchSites]);
 
   if (loading) {
     return (

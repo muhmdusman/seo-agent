@@ -4,8 +4,8 @@ import type { NextRequest } from 'next/server';
 /**
  * Next.js middleware for route protection based on authentication state.
  *
- * Note: Middleware runs on the server, so it can't access localStorage.
- * We'll handle auth checks client-side for now.
+ * The backend owns auth cookies, so route-level checks happen client-side
+ * through /auth/me for now.
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -15,8 +15,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // For dashboard, we'll let the client-side check handle it
-  // since tokens are now in localStorage (not cookies)
+  // For dashboard, we'll let the client-side check handle it.
   return NextResponse.next();
 }
 

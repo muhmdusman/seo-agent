@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { logout } from '@/lib/auth';
 import { API_BASE_URL } from '@/lib/config';
 import { apiClient } from '@/lib/api-client';
@@ -63,20 +63,7 @@ export default function DashboardPage() {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const accessToken = localStorage.getItem('access_token');
-    
-    if (!accessToken) {
-      // No token at all, redirect to login
-      window.location.href = '/';
-      return;
-    }
-
-    // Token exists, try to use it
-    fetchSites();
-  }, []);
-
-  async function fetchSites() {
+  const fetchSites = useCallback(async () => {
     try {
       setSitesLoading(true);
       setError(null);
@@ -94,7 +81,15 @@ export default function DashboardPage() {
     } finally {
       setSitesLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void fetchSites();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [fetchSites]);
 
   function validateFilters(): boolean {
     const errors = {
@@ -120,35 +115,15 @@ export default function DashboardPage() {
   }
 
   async function handleStartAnalysis() {
-    const accessToken = localStorage.getItem('access_token');
-    
-    if (!accessToken) {
-      setError('Please login again');
-      window.location.href = '/';
-      return;
-    }
-
-    // Decode token to get user_id (JWT tokens have payload in middle section)
     try {
-      const payload = JSON.parse(atob(accessToken.split('.')[1]));
-      const userId = payload.sub || payload.user_id || payload.email;
-      
-      if (!userId) {
-        setError('Invalid token. Please login again.');
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/';
-        return;
-      }
-
       setAnalysis('');
       setError(null);
       setStatus('');
       setIsAnalyzing(true);
 
-      const url = `${API_BASE_URL}/agent/weekly?user_id=${encodeURIComponent(
-        userId
-      )}&site_url=${encodeURIComponent(selectedSite)}&website_number_of_pages=${encodeURIComponent(
+      const url = `${API_BASE_URL}/agent/weekly?site_url=${encodeURIComponent(
+        selectedSite
+      )}&website_number_of_pages=${encodeURIComponent(
         websiteSize
       )}&website_type=${encodeURIComponent(websiteType)}&user_goal=${encodeURIComponent(
         userGoal
@@ -156,6 +131,11 @@ export default function DashboardPage() {
 
       console.log('Fetching analysis from:', url);
       const res = await fetch(url, { credentials: 'include' });
+
+      if (res.status === 401) {
+        window.location.href = '/';
+        return;
+      }
 
       if (!res.ok || !res.body) {
         console.error('Failed to start analysis:', res.status, res.statusText);
@@ -167,7 +147,6 @@ export default function DashboardPage() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let hasReceivedAnalysis = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -203,7 +182,6 @@ export default function DashboardPage() {
             } else {
               console.log('Setting analysis (length):', message.length);
               setAnalysis(message);
-              hasReceivedAnalysis = true;
               console.log('Analysis received, hiding spinner now');
               setIsAnalyzing(false);
             }
