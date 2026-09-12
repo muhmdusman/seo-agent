@@ -7,6 +7,9 @@ backend/lambda_code.zip
 backend/lambda_package/
 backend/lambda_code_only/
 backend/requirements.txt
+local-context.txt
+docs/
+
 
 # Python
 __pycache__/
@@ -30,6 +33,7 @@ frontend/out/
 frontend/build/
 frontend/.vercel
 frontend/.turbo
+frontend/tests/
 
 # IDEs
 .vscode/
