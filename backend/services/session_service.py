@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select
@@ -20,11 +20,13 @@ class SessionService:
         user_id: UUID,
     ) -> Session:
 
+        now = datetime.now(timezone.utc)
+
         session = Session(
             user_id=user_id,
             refresh_token_hash="",
-            expires_at=datetime.utcnow(),
-            last_used_at=datetime.utcnow(),
+            expires_at=now,
+            last_used_at=now,
         )
 
         self.db.add(session)
@@ -65,7 +67,7 @@ class SessionService:
         session: Session,
     ) -> Session:
 
-        session.last_used_at = datetime.utcnow()
+        session.last_used_at = datetime.now(timezone.utc)
 
         await self.db.flush()
 

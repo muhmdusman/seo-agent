@@ -15,7 +15,7 @@ def create_user_context_tool(db):
         Return the Google credentials for a user.
         """
 
-        credentials = await oauth_service.get_google_account(
+        credentials = await oauth_service.get_valid_google_account(
             user_id=user_id,
         )
 

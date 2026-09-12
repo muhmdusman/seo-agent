@@ -192,6 +192,36 @@ if [ ! -f "$ROOT_DIR/frontend/.env.local" ]; then
     ok "created frontend/.env.local"
 fi
 
+ensure_next_cache_writable() {
+    local cache_dir="$ROOT_DIR/frontend/.next"
+    local probe_dir="$cache_dir/dev/static/chunks"
+    local probe_file="$probe_dir/.write-test"
+
+    mkdir -p "$probe_dir" 2>/dev/null || true
+
+    if ! : > "$probe_file" 2>/dev/null; then
+        warn "frontend/.next is not writable; removing stale Next.js cache"
+
+        if ! rm -rf "$cache_dir" 2>/dev/null; then
+            die "Could not remove frontend/.next because of file permissions.
+       Fix ownership, then rerun ./dev.sh:
+       sudo chown -R $(id -un):$(id -gn) \"$ROOT_DIR/frontend/.next\""
+        fi
+
+        mkdir -p "$probe_dir" || die "Could not recreate frontend/.next cache directory."
+
+        if ! : > "$probe_file" 2>/dev/null; then
+            die "frontend/.next is still not writable.
+       Fix ownership, then rerun ./dev.sh:
+       sudo chown -R $(id -un):$(id -gn) \"$ROOT_DIR/frontend/.next\""
+        fi
+    fi
+
+    rm -f "$probe_file"
+}
+
+ensure_next_cache_writable
+
 if [ ! -d "$ROOT_DIR/frontend/node_modules" ]; then
     say "    installing npm packages (first run, this takes a minute)"
     ( cd "$ROOT_DIR/frontend" && npm install )

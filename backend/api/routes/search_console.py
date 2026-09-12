@@ -27,7 +27,7 @@ async def list_sites(
 
     oauth_service = OAuthService(db)
 
-    account = await oauth_service.get_google_account(
+    account = await oauth_service.get_valid_google_account(
         user_id=user_id,
     )
 

@@ -9,6 +9,7 @@ from models.job import Job
 from models.user import User
 from models.oauth_account import OAuthAccount
 from core.enums import JobStatus
+from services.oauth_service import OAuthService
 from workers.daily_report_worker import generate_daily_report
 
 logger = logging.getLogger(__name__)
@@ -43,9 +44,18 @@ class SchedulerService:
                 )
                 continue
 
-            sites = await self._get_user_sites(
-                oauth_account.credentials.access_token
+            oauth_service = OAuthService(self.db)
+            credentials = await oauth_service.get_valid_google_account(
+                user_id=user.id,
             )
+
+            if not credentials:
+                logger.warning(
+                    f"No Google credentials for user {user.id}"
+                )
+                continue
+
+            sites = await self._get_user_sites(credentials.access_token)
 
             for site_url in sites:
 

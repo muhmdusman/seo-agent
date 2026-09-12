@@ -1,3 +1,8 @@
+import hashlib
+import hmac
+from datetime import datetime, timezone
+from uuid import UUID
+
 from fastapi import (
     Request,
     Depends,
@@ -18,35 +23,28 @@ from services.session_service import SessionService
 jwt_service = JWTService()
 
 
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _cookie_secure() -> bool:
+    return settings.APP_URL.startswith("https://")
+
+
+def _is_expired(expires_at: datetime) -> bool:
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    return expires_at <= datetime.now(timezone.utc)
+
 
 async def authenticate(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
-    # Try Authorization header first (for localStorage-based auth)
-    auth_header = request.headers.get("Authorization")
-    
-    if auth_header and auth_header.startswith("Bearer "):
-        access_token = auth_header.split(" ")[1]
-        
-        try:
-            payload = jwt_service.decode_token(access_token)
-            
-            if payload.get("type") != "access":
-                raise Exception("Wrong token type")
-            
-            request.state.user = payload
-            return payload
-            
-        except Exception as e:
-            print(f"Authorization header token failed: {repr(e)}")
-            # Fall through to cookie-based auth
-    
-    # Fall back to cookie-based auth (legacy)
     access_token = request.cookies.get("access_token")
 
-    # CASE 1: Access token exists in cookies
     if access_token:
         try:
             payload = jwt_service.decode_token(access_token)
@@ -60,7 +58,25 @@ async def authenticate(
         except Exception as e:
             print(f"Access token from cookie failed: {repr(e)}")
 
-    # CASE 2: Refresh token flow (cookie-based only)
+    # Temporary compatibility for old browser sessions created before the
+    # cookie migration. New frontend requests do not send this header.
+    auth_header = request.headers.get("Authorization")
+
+    if auth_header and auth_header.startswith("Bearer "):
+        access_token = auth_header.split(" ")[1]
+
+        try:
+            payload = jwt_service.decode_token(access_token)
+
+            if payload.get("type") != "access":
+                raise Exception("Wrong token type")
+
+            request.state.user = payload
+            return payload
+
+        except Exception as e:
+            print(f"Authorization header token failed: {repr(e)}")
+
     refresh_token = request.cookies.get("refresh_token")
 
     if not refresh_token:
@@ -76,12 +92,23 @@ async def authenticate(
             raise Exception("Wrong token type")
 
         session_id = payload.get("sid")
+        if not session_id:
+            raise Exception("Missing session id")
 
         session_service = SessionService(db)
-        session = await session_service.get_by_id(session_id)
+        session = await session_service.get_by_id(UUID(session_id))
 
         if not session or session.revoked:
             raise Exception("Invalid session")
+
+        if _is_expired(session.expires_at):
+            raise Exception("Session expired")
+
+        if not hmac.compare_digest(
+            session.refresh_token_hash,
+            _hash_token(refresh_token),
+        ):
+            raise Exception("Refresh token does not match session")
 
         new_access_token = jwt_service.create_access_token(
             user_id=session.user_id,
@@ -92,10 +119,15 @@ async def authenticate(
             key="access_token",
             value=new_access_token,
             httponly=True,
-            secure=False,
+            secure=_cookie_secure(),
             samesite="lax",
             max_age=60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+            path="/",
         )
+        request.state.new_access_token = new_access_token
+
+        await session_service.touch_session(session)
+        await db.commit()
 
         request.state.user = {
             "sub": str(session.user_id),
