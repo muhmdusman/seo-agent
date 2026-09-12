@@ -1,0 +1,13 @@
+INFO:     Will watch for changes in these directories: ['D:\\Summer 2026 GIS\\Web Dev\\Seo Agent\\backend']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [8740] using WatchFiles
+INFO:     Started server process [37448]
+INFO:     Waiting for application startup.
+2026-09-12 11:59:48,523 | INFO | main | Database connected
+2026-09-12 11:59:48,545 | INFO | main | Redis connected
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-09-12 12:01:01,451 | INFO | main | Database engine disposed, application shutting down
+INFO:     Application shutdown complete.
+INFO:     Finished server process [37448]
