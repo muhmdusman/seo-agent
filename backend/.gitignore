@@ -24,3 +24,6 @@ lambda_function.zip
 deploy_lambda.sh
 deploy_via_s3.sh
 app-*.zip
+
+*.log
+*log.err

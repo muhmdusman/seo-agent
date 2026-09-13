@@ -1,0 +1,70 @@
+# syntax=docker/dockerfile:1
+
+# ============================================================
+# Stage 1: Builder
+# ============================================================
+FROM python:3.11-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_PYTHON_DOWNLOADS=0
+
+# Install uv into the builder only.
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+# Copy dependency metadata first.
+# This allows Docker to cache dependency installation.
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies without installing the project itself.
+RUN uv sync --locked --no-install-project
+
+# Copy application source.
+COPY . .
+
+# Install/synchronize the project environment.
+RUN uv sync --locked
+
+
+# ============================================================
+# Stage 2: Runtime
+# ============================================================
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+WORKDIR /app
+
+# Create a non-root user.
+RUN useradd --create-home --shell /bin/bash appuser
+
+# Copy the Python environment created by the builder.
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy only application files required at runtime.
+COPY --from=builder /app/*.py /app/
+COPY --from=builder /app/api /app/api
+COPY --from=builder /app/agents /app/agents
+COPY --from=builder /app/core /app/core
+COPY --from=builder /app/db /app/db
+COPY --from=builder /app/dependencies /app/dependencies
+COPY --from=builder /app/models /app/models
+COPY --from=builder /app/schemas /app/schemas
+COPY --from=builder /app/services /app/services
+COPY --from=builder /app/system-prompt /app/system-prompt
+COPY --from=builder /app/tools /app/tools
+COPY --from=builder /app/workers /app/workers
+
+# Give the runtime user ownership of the application.
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 8000
+
+# Start FastAPI through the Python interpreter.
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
