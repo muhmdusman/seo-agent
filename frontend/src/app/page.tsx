@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
 import { getGoogleLoginUrl } from '@/lib/api/auth';
+import { getCurrentUserId } from '@/lib/auth';
 
 const capabilities = [
   'Pulls 30 days of Search Console performance',
@@ -18,23 +19,35 @@ export default function Home() {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Simple check: if access token exists in localStorage, redirect to dashboard
-    const accessToken = localStorage.getItem('access_token');
-    
-    if (accessToken) {
-      console.log('✅ Access token found, redirecting to dashboard');
-      router.push('/dashboard');
-    } else {
-      console.log('❌ No access token, showing login page');
+    let cancelled = false;
+
+    async function checkSession() {
+      const userId = await getCurrentUserId({
+        redirectOnUnauthorized: false,
+      });
+
+      if (cancelled) return;
+
+      if (userId) {
+        router.push('/dashboard');
+        return;
+      }
+
       setIsChecking(false);
     }
+
+    checkSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   const handleGoogleLogin = () => {
     window.location.href = getGoogleLoginUrl();
   };
 
-  // Show loading only while checking localStorage
+  // Show loading only while checking the backend session.
   if (isChecking) {
     return null; // Return nothing to avoid any flash
   }

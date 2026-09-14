@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -5,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from core.enums import OAuthProvider
 from models.oauth_account import OAuthAccount
 from models.oauth_credential import OAuthCredential
+from services.google_oauth import GoogleOAuthService
 
 
 class OAuthService:
@@ -109,5 +112,35 @@ class OAuthService:
         result = await self.db.execute(stmt)
 
         credentials = result.scalar_one_or_none()
+
+        return credentials
+
+    async def get_valid_google_account(
+        self,
+        user_id,
+    ):
+        credentials = await self.get_google_account(user_id=user_id)
+
+        if credentials is None:
+            return None
+
+        expires_at = credentials.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+        refresh_buffer = datetime.now(timezone.utc) + timedelta(minutes=2)
+        if expires_at > refresh_buffer:
+            return credentials
+
+        google_service = GoogleOAuthService()
+        access_token, expires_at = await google_service.refresh_access_token(
+            credentials.refresh_token,
+        )
+
+        credentials.access_token = access_token
+        credentials.expires_at = expires_at
+
+        await self.db.flush()
+        await self.db.commit()
 
         return credentials

@@ -94,9 +94,6 @@ class GoogleOAuthService:
 
         response.raise_for_status()
 
-        print("RAW GOOGLE TOKEN RESPONSE:")
-        print(response.json())
-
         token_data = GoogleTokenResponse.model_validate(
             response.json()
         )
@@ -112,6 +109,33 @@ class GoogleOAuthService:
 
 
         return token_data
+
+    async def refresh_access_token(
+        self,
+        refresh_token: str,
+    ) -> tuple[str, datetime]:
+
+        data = {
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "client_secret": settings.GOOGLE_CLIENT_SECRET,
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token",
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                self.GOOGLE_TOKEN_URL,
+                data=data,
+            )
+
+        response.raise_for_status()
+        token_data = response.json()
+        expires_at = (
+            datetime.now(timezone.utc)
+            + timedelta(seconds=token_data["expires_in"])
+        )
+
+        return token_data["access_token"], expires_at
 
 
 

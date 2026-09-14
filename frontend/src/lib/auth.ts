@@ -1,26 +1,27 @@
 import { apiClient } from './api-client';
 
-// Fetch the authenticated user's id from the backend using Bearer token
-export async function getCurrentUserId(): Promise<string | null> {
+type GetCurrentUserOptions = {
+  redirectOnUnauthorized?: boolean;
+};
+
+// Fetch the authenticated user's id from the backend using HttpOnly cookies.
+export async function getCurrentUserId(
+  options: GetCurrentUserOptions = {},
+): Promise<string | null> {
   try {
-    const data = await apiClient.get<{ user_id: string }>('/auth/me');
+    const data = await apiClient.get<{ user_id: string }>('/auth/me', options);
     return data.user_id ?? null;
   } catch {
     return null;
   }
 }
 
-// Log out: clear tokens from localStorage and redirect to landing
+// Log out: clear server-owned auth cookies and redirect to landing.
 export async function logout(): Promise<void> {
   try {
-    // Clear tokens from localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-    }
-    
-    // Try to call logout endpoint (optional, since tokens are client-side)
-    await apiClient.post('/auth/logout');
+    await apiClient.post('/auth/logout', undefined, {
+      redirectOnUnauthorized: false,
+    });
   } catch {
     // ignore
   } finally {
