@@ -49,6 +49,7 @@ class SEOReport(Base):
     status: Mapped[str] = mapped_column(String(20), default="completed", server_default="completed")
     stages: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
     preferences: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    evidence: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

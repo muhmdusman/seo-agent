@@ -1,389 +1,123 @@
-import logging
+"""Bounded public-page sampling; raw HTML observations, not a browser audit."""
+import asyncio
+import ipaddress
+import socket
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 from bs4 import BeautifulSoup
-import lxml.etree as etree
+from lxml import etree
 
 
-logger = logging.getLogger(__name__)
+def belongs_to_property(url: str, site: str) -> bool:
+    try:
+        parsed = urlsplit(url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username or parsed.password:
+            return False
+        if site.startswith("sc-domain:"):
+            domain = site.removeprefix("sc-domain:").lower()
+            return parsed.hostname == domain or parsed.hostname.endswith("." + domain)
+        root = urlsplit(site)
+        return (parsed.scheme, parsed.hostname, parsed.port) == (root.scheme, root.hostname, root.port) and parsed.path.startswith(root.path)
+    except ValueError:
+        return False
+
+
+async def public_address(url: str) -> str:
+    parsed = urlsplit(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username or parsed.password or parsed.port not in (None, 80, 443):
+        raise ValueError("Only public HTTP(S) pages on standard ports can be fetched.")
+    addresses = await asyncio.get_running_loop().getaddrinfo(
+        parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80), type=socket.SOCK_STREAM,
+    )
+    if not addresses or any(not ipaddress.ip_address(item[4][0]).is_global for item in addresses):
+        raise ValueError("Private or reserved network addresses cannot be fetched.")
+    return addresses[0][4][0]
 
 
 class ScraperService:
-
-    async def scrape_from_sitemap(
-        self,
-        sitemap_url: str,
-    ) -> list[dict]:
-
-        logger.info("=" * 80)
-        logger.info("SCRAPER STARTED")
-        logger.info("Sitemap URL: %s", sitemap_url)
-        logger.info("=" * 80)
-
-        async with httpx.AsyncClient(
-            timeout=30,
-            follow_redirects=True,
-        ) as client:
-
-            # =====================================================
-            # 1. FETCH SITEMAP
-            # =====================================================
-
-            logger.info(
-                "Fetching sitemap: %s",
-                sitemap_url,
-            )
-
-            sitemap_response = await client.get(
-                sitemap_url,
-            )
-
-            logger.info(
-                "Sitemap response status=%s url=%s",
-                sitemap_response.status_code,
-                sitemap_response.url,
-            )
-
-            logger.info(
-                "Sitemap response size=%d bytes",
-                len(sitemap_response.content),
-            )
-
-            sitemap_response.raise_for_status()
-
-            # =====================================================
-            # 2. PARSE SITEMAP
-            # =====================================================
-
-            logger.info(
-                "Parsing sitemap XML"
-            )
-
-            root = etree.fromstring(
-                sitemap_response.content,
-            )
-
-            urls = root.xpath(
-                "//*[local-name()='loc']/text()"
-            )
-
-            logger.info(
-                "Sitemap contains %d URLs",
-                len(urls),
-            )
-
-            # Log every discovered URL
-            for index, url in enumerate(urls):
-
-                logger.info(
-                    "SITEMAP URL #%d: %s",
-                    index + 1,
-                    url,
-                )
-
-            # =====================================================
-            # 3. SCRAPE PAGES
-            # =====================================================
-
-            pages = []
-
-            for index, url in enumerate(urls):
-
-                logger.info("")
-                logger.info(
-                    "-" * 80,
-                )
-
-                logger.info(
-                    "SCRAPING PAGE #%d/%d",
-                    index + 1,
-                    len(urls),
-                )
-
-                logger.info(
-                    "Original URL: %s",
-                    url,
-                )
-
-                try:
-
-                    response = await client.get(
-                        url,
-                    )
-
-                    # -------------------------------------------------
-                    # Response information
-                    # -------------------------------------------------
-
-                    logger.info(
-                        "Response status=%s",
-                        response.status_code,
-                    )
-
-                    logger.info(
-                        "Final URL=%s",
-                        response.url,
-                    )
-
-                    logger.info(
-                        "Response size=%d bytes",
-                        len(response.content),
-                    )
-
-                    # -------------------------------------------------
-                    # Redirect history
-                    # -------------------------------------------------
-
-                    if response.history:
-
-                        logger.info(
-                            "Redirect chain detected"
-                        )
-
-                        for redirect_index, redirect in enumerate(
-                            response.history
-                        ):
-
-                            logger.info(
-                                "Redirect #%d: %s -> %s",
-                                redirect_index + 1,
-                                redirect.status_code,
-                                redirect.headers.get(
-                                    "location"
-                                ),
-                            )
-
-                    else:
-
-                        logger.info(
-                            "No redirects"
-                        )
-
-                    # -------------------------------------------------
-                    # Validate response
-                    # -------------------------------------------------
-
-                    response.raise_for_status()
-
-                    # =================================================
-                    # 4. PARSE HTML
-                    # =================================================
-
-                    logger.info(
-                        "Parsing HTML for URL=%s",
-                        response.url,
-                    )
-
-                    soup = BeautifulSoup(
-                        response.text,
-                        "html.parser",
-                    )
-
-                    # =================================================
-                    # 5. TITLE
-                    # =================================================
-
-                    title = (
-                        soup.title.get_text(strip=True)
-                        if soup.title
-                        else None
-                    )
-
-                    logger.info(
-                        "Title=%r",
-                        title,
-                    )
-
-                    # =================================================
-                    # 6. META DESCRIPTION
-                    # =================================================
-
-                    meta_tag = soup.find(
-                        "meta",
-                        attrs={
-                            "name": "description",
-                        },
-                    )
-
-                    meta_description = (
-                        meta_tag.get("content")
-                        if meta_tag
-                        else None
-                    )
-
-                    logger.info(
-                        "Meta description=%r",
-                        meta_description,
-                    )
-
-                    # =================================================
-                    # 7. CANONICAL
-                    # =================================================
-
-                    canonical_tag = soup.find(
-                        "link",
-                        rel="canonical",
-                    )
-
-                    canonical = (
-                        canonical_tag.get("href")
-                        if canonical_tag
-                        else None
-                    )
-
-                    logger.info(
-                        "Canonical=%r",
-                        canonical,
-                    )
-
-                    # =================================================
-                    # 8. HEADINGS
-                    # =================================================
-
-                    h1 = [
-                        h.get_text(strip=True)
-                        for h in soup.find_all("h1")
-                    ]
-
-                    h2 = [
-                        h.get_text(strip=True)
-                        for h in soup.find_all("h2")
-                    ]
-
-                    logger.info(
-                        "H1 count=%d values=%r",
-                        len(h1),
-                        h1,
-                    )
-
-                    logger.info(
-                        "H2 count=%d values=%r",
-                        len(h2),
-                        h2,
-                    )
-
-                    # =================================================
-                    # 9. STORE PAGE
-                    # =================================================
-
-                    page = {
-                        "url": url,
-                        "title": title,
-                        "meta_description": meta_description,
-                        "canonical": canonical,
-                        "h1": h1,
-                        "h2": h2,
-                    }
-
-                    pages.append(page)
-
-                    logger.info(
-                        "PAGE SUCCESSFULLY SCRAPED"
-                    )
-
-                    logger.info(
-                        "Page data=%r",
-                        page,
-                    )
-
-                except httpx.HTTPStatusError as exc:
-
-                    logger.error(
-                        "HTTP STATUS ERROR"
-                    )
-
-                    logger.error(
-                        "Original URL=%s",
-                        url,
-                    )
-
-                    logger.error(
-                        "Status code=%s",
-                        exc.response.status_code,
-                    )
-
-                    logger.error(
-                        "Final URL=%s",
-                        exc.response.url,
-                    )
-
-                    logger.error(
-                        "Response headers=%r",
-                        dict(exc.response.headers),
-                    )
-
-                    logger.error(
-                        "Response body preview=%r",
-                        exc.response.text[:500],
-                    )
-
-                    continue
-
-                except httpx.RequestError as exc:
-
-                    logger.error(
-                        "HTTP REQUEST ERROR"
-                    )
-
-                    logger.error(
-                        "URL=%s",
-                        url,
-                    )
-
-                    logger.error(
-                        "Error type=%s",
-                        type(exc).__name__,
-                    )
-
-                    logger.error(
-                        "Error=%s",
-                        exc,
-                    )
-
-                    continue
-
-                except Exception:
-
-                    logger.exception(
-                        "UNEXPECTED SCRAPER ERROR"
-                    )
-
-                    logger.error(
-                        "URL=%s",
-                        url,
-                    )
-
-                    continue
-
-            # =====================================================
-            # 10. FINAL RESULT
-            # =====================================================
-
-            # logger.info("")
-            # logger.info("=" * 80)
-            # logger.info("SCRAPER COMPLETED")
-            # logger.info("=" * 80)
-
-            # logger.info(
-            #     "URLs discovered=%d",
-            #     len(urls),
-            # )
-
-            # logger.info(
-            #     "Pages successfully scraped=%d",
-            #     len(pages),
-            # )
-
-            # logger.info(
-            #     "Pages failed=%d",
-            #     len(urls) - len(pages),
-            # )
-
-            # logger.info(
-            #     "Final pages=%r",
-            #     pages,
-            # )
-
-            # logger.info("=" * 80)
-
+    async def _fetch(self, url: str, site: str) -> dict:
+        for _ in range(4):
+            if not belongs_to_property(url, site):
+                raise ValueError("URL is outside the requested property.")
+            address = await public_address(url)
+            original = httpx.URL(url)
+            # Pin the validated DNS result, preserving Host and TLS identity.
+            # A fresh client avoids sharing TLS connections between virtual hosts.
+            async with httpx.AsyncClient(timeout=8, trust_env=False, follow_redirects=False) as client:
+                async with client.stream("GET", original.copy_with(host=address),
+                                         headers={"Host": original.netloc.decode(), "User-Agent": "SEOReview/1.0"},
+                                         extensions={"sni_hostname": original.host}) as response:
+                    if response.status_code in (301, 302, 303, 307, 308):
+                        url = urljoin(url, response.headers.get("location", ""))
+                        continue
+                    body = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        body.extend(chunk)
+                        if len(body) > 2_000_000:
+                            raise ValueError("Page exceeds the 2 MB fetch limit.")
+                    return {"url": url, "status_code": response.status_code,
+                            "headers": dict(response.headers), "body": bytes(body)}
+        raise ValueError("Redirect limit reached.")
+
+    async def scrape_page(self, url: str, site: str) -> dict:
+        try:
+            result = await self._fetch(url, site)
+            base = {"url": url, "final_url": result["url"], "status_code": result["status_code"]}
+            if result["status_code"] != 200:
+                return base
+            if "html" not in result["headers"].get("content-type", "").lower():
+                return {**base, "fetch_error": "Response was not HTML."}
+            soup = BeautifulSoup(result["body"], "html.parser")
+            def meta(name):
+                tag = soup.find("meta", attrs={"name": name})
+                return str(tag.get("content", "")) if tag else ""
+            canonical = soup.find("link", rel="canonical")
+            robots = meta("robots") + "," + meta("googlebot") + "," + result["headers"].get("x-robots-tag", "")
+            for tag in soup(["script", "style", "nav", "footer"]):
+                tag.decompose()
+            return {**base, "title": soup.title.get_text(" ", strip=True)[:500] if soup.title else "",
+                    "meta_description": meta("description")[:1000],
+                    "canonical": urljoin(result["url"], canonical["href"]) if canonical and canonical.get("href", "").strip() else "",
+                    "h1": [h.get_text(" ", strip=True)[:500] for h in soup.find_all("h1")[:5]],
+                    "h2": [h.get_text(" ", strip=True)[:200] for h in soup.find_all("h2")[:8]],
+                    "noindex": any(token in robots.lower().replace(",", " ").split() for token in ("noindex", "none")),
+                    "viewport": meta("viewport")[:500], "text_sample": soup.get_text(" ", strip=True)[:3000]}
+        except (httpx.HTTPError, ValueError, OSError) as exc:
+            return {"url": url, "fetch_error": type(exc).__name__}
+
+    async def scrape_from_sitemap(self, sitemap_url: str | None, max_pages: int = 12,
+                                  priority_urls: list[str] | None = None, site_url: str | None = None) -> list[dict]:
+        site = site_url or (f"{urlsplit(sitemap_url).scheme}://{urlsplit(sitemap_url).netloc}/" if sitemap_url else "")
+        urls = list(dict.fromkeys(url for url in (priority_urls or []) if belongs_to_property(url, site)))[:max_pages]
+        root_url = "https://" + site.removeprefix("sc-domain:") + "/" if site.startswith("sc-domain:") else site
+        if root_url and root_url not in urls and len(urls) < max_pages:
+            urls.append(root_url)
+        maps, visited = ([sitemap_url] if sitemap_url else []), set()
+        pages = []
+        try:
+            async with asyncio.timeout(45):
+                while maps and len(visited) < 3 and len(urls) < max_pages:
+                    current = maps.pop(0)
+                    if current in visited:
+                        continue
+                    visited.add(current)
+                    try:
+                        result = await self._fetch(current, site)
+                        if result["status_code"] != 200:
+                            continue
+                        root = etree.fromstring(result["body"], parser=etree.XMLParser(resolve_entities=False, no_network=True))
+                        locations = root.xpath("//*[local-name()='loc']/text()")[:max_pages * 2]
+                        if etree.QName(root).localname == "sitemapindex":
+                            maps.extend(locations[:3])
+                        else:
+                            for url in locations:
+                                if belongs_to_property(url, site) and url not in urls and len(urls) < max_pages:
+                                    urls.append(url)
+                    except (httpx.HTTPError, ValueError, OSError, etree.XMLSyntaxError):
+                        continue
+                for url in urls:
+                    pages.append(await self.scrape_page(url, site))
+        except TimeoutError:
+            pages.append({"fetch_error": "Sampling deadline reached; some pages were not checked."})
         return pages

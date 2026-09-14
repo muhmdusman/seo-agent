@@ -135,7 +135,7 @@ export function AnalysisDisplay({ siteUrl, analysis }: AnalysisDisplayProps) {
     <section className="min-w-0 [overflow-wrap:anywhere]">
       <div className="gap-1 border-b border-slate-200/70 pb-4">
         <p className="text-xs font-medium uppercase tracking-wide text-indigo-600">
-          SEO analysis
+          SEO review & fixes
         </p>
         <h2 className="break-all text-base font-semibold text-slate-900">
           {siteUrl}

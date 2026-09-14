@@ -1,21 +1,18 @@
 import type { NextConfig } from "next";
 
+const backendApiBaseUrl = (
+  process.env.BACKEND_API_URL ??
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:8000/api/v1"
+    : "https://c7hi027il3.execute-api.us-east-1.amazonaws.com/api/v1")
+).replace(/\/$/, "");
+
 const nextConfig: NextConfig = {
   async rewrites() {
-    // Only use rewrites in production (when deployed to Amplify)
-    // In local development, the API_BASE_URL from .env.local is used directly
-    const isProduction = process.env.NODE_ENV === 'production';
-    
-    if (isProduction) {
-      return [
-        {
-          source: '/api/v1/:path*',
-          destination: 'http://search-console-prod.eba-auaxqesy.us-east-1.elasticbeanstalk.com/api/v1/:path*',
-        },
-      ];
-    }
-    
-    return [];
+    return [{
+      source: '/api/v1/:path*',
+      destination: `${backendApiBaseUrl}/:path*`,
+    }];
   },
 };
 

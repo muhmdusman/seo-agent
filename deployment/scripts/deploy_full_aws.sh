@@ -207,7 +207,7 @@ if [ -f "../.env" ]; then
         SMTP_PASSWORD="$(grep SMTP_PASSWORD ../.env | cut -d '=' -f2)" \
         SMTP_FROM_EMAIL="$(grep SMTP_FROM_EMAIL ../.env | cut -d '=' -f2)" \
         SMTP_FROM_NAME="$(grep SMTP_FROM_NAME ../.env | cut -d '=' -f2)" \
-        FRONTEND_URL="https://main.d3vozze6u0rukp.amplifyapp.com" \
+        FRONTEND_URL="https://main.d2cjd8wxgkx3po.amplifyapp.com" \
         GOOGLE_REDIRECT_URI="http://$EB_URL/api/v1/auth/google/callback"
 fi
 
@@ -235,7 +235,7 @@ aws lambda update-function-configuration \
         SMTP_FROM_EMAIL=$(grep SMTP_FROM_EMAIL .env | cut -d '=' -f2 | tr -d '"'),
         SMTP_FROM_NAME=$(grep SMTP_FROM_NAME .env | cut -d '=' -f2 | tr -d '"'),
         ADMIN_EMAIL=$(grep ADMIN_EMAIL .env | cut -d '=' -f2 | tr -d '"'),
-        FRONTEND_URL=https://main.d3vozze6u0rukp.amplifyapp.com
+        FRONTEND_URL=https://main.d2cjd8wxgkx3po.amplifyapp.com
     }" \
     --region $REGION \
     > /dev/null
@@ -250,10 +250,10 @@ echo ""
 
 echo "📝 Update Amplify environment variable manually:"
 echo ""
-echo "   Go to: https://console.aws.amazon.com/amplify/home?region=us-east-1#/d3vozze6u0rukp"
+echo "   Go to: https://console.aws.amazon.com/amplify/home?region=us-east-1#/d2cjd8wxgkx3po"
 echo "   → Environment variables"
-echo "   → Edit: NEXT_PUBLIC_API_BASE_URL"
-echo "   → Set to: http://$EB_URL/api/v1"
+echo "   → Edit: BACKEND_API_URL (server-side rewrite target)"
+echo "   → Set to: https://c7hi027il3.execute-api.us-east-1.amazonaws.com/api/v1"
 echo "   → Save"
 echo "   → Redeploy"
 echo ""
@@ -277,8 +277,8 @@ echo "   Function: $LAMBDA_FUNCTION"
 echo "   Status: Updated with RDS connection"
 echo ""
 echo "✅ Frontend:"
-echo "   URL: https://main.d3vozze6u0rukp.amplifyapp.com"
-echo "   Action Required: Update NEXT_PUBLIC_API_BASE_URL"
+echo "   URL: https://main.d2cjd8wxgkx3po.amplifyapp.com"
+echo "   Action Required: Update BACKEND_API_URL in Amplify"
 echo ""
 echo "============================================================"
 echo "📋 Next Steps:"
@@ -289,7 +289,7 @@ echo "2. Update Google OAuth Console:"
 echo "   Add redirect URI: http://$EB_URL/api/v1/auth/google/callback"
 echo ""
 echo "3. Test the application:"
-echo "   - Visit: https://main.d3vozze6u0rukp.amplifyapp.com"
+echo "   - Visit: https://main.d2cjd8wxgkx3po.amplifyapp.com"
 echo "   - Click 'Connect with Google'"
 echo "   - Authenticate and connect sites"
 echo ""

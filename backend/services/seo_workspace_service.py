@@ -6,10 +6,12 @@ from fastapi import HTTPException
 from sqlalchemy import select, text, update
 from sqlalchemy.orm import selectinload
 
+from core.seo_framework import SEO_STAGES, next_stage_bundle
 from models.seo_report import SEOReport
 from models.seo_task import SEOTask, SEOSubtask
-from schemas.seo import AnalysisDraft, AnalysisRequest, next_stages
+from schemas.seo import AnalysisDraft, AnalysisRequest
 from services.seo_reports_service import SEOReportsService
+from services.seo_review_service import check_page
 
 
 PRIORITIES = {"critical": 0, "high": 1, "medium": 2, "quick-win": 3}
@@ -22,6 +24,7 @@ def report_json(report):
         "report": report.report, "summary": report.summary,
         "created_at": report.created_at.isoformat(),
         "stages": report.stages, "preferences": report.preferences,
+        "evidence": report.evidence,
     }
 
 
@@ -33,6 +36,7 @@ def task_json(task):
             "why_it_matters", "manual_fix", "agent_prompt",
         )},
         "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+        "verification": task.verification, "review": task.review,
         "subtasks": [
             {"id": str(sub.id), "title": sub.title,
              "completed_at": sub.completed_at.isoformat() if sub.completed_at else None}
@@ -63,7 +67,7 @@ class SEOWorkspaceService:
         rows = await self.db.scalars(select(SEOReport.stages).where(
             SEOReport.user_id == user_id, SEOReport.site_url == site_url, SEOReport.status == "completed",
         ))
-        return {stage for stages in rows for stage in stages}
+        return {stage for stages in rows for stage in stages if stage in SEO_STAGES}
 
     async def active_run(self, user_id, site_url):
         return await self.db.scalar(select(SEOReport.id).where(
@@ -76,6 +80,13 @@ class SEOWorkspaceService:
         latest = reports[0] if reports else None
         tasks = await self.get_tasks(user_id, site_url)
         covered = await self.covered_stages(user_id, site_url)
+        preferences = latest.preferences if latest else {}
+        remaining = [stage for stage in SEO_STAGES if stage not in covered]
+        phase = preferences.get("phase", "framework") if latest else "framework"
+        if not remaining and phase == "framework":
+            # The next run should continue with visibility work even when the
+            # latest completed report was the final framework bundle.
+            phase = "visibility-opportunities"
         pending = sum(task.completed_at is None for task in tasks)
         running = await self.active_run(user_id, site_url)
         return {
@@ -84,7 +95,15 @@ class SEOWorkspaceService:
             "tasks": [task_json(task) for task in tasks],
             "covered_stages": sorted(covered), "pending_count": pending,
             "running": running is not None,
-            "can_analyze": not pending and not running and len(covered) < 9,
+            "can_analyze": not running,
+            "framework_complete": not remaining,
+            "next_stages": next_stage_bundle(covered, preferences.get("website_number_of_pages", "1-10")) if remaining else [],
+            "phase": phase,
+            "next_review_at": min(
+                (task.completed_at + timedelta(days=10) for task in tasks
+                 if task.completed_at and (task.review or {}).get("performance", {}).get("status") != "compared"),
+                default=latest.created_at + timedelta(days=7) if latest else None,
+            ),
         }
 
     async def reserve_run(self, user_id, request: AnalysisRequest):
@@ -95,39 +114,69 @@ class SEOWorkspaceService:
         ).values(status="failed"))
         if await self.active_run(user_id, request.site_url):
             raise HTTPException(409, "An analysis is already running for this site.")
-        tasks = await self.get_tasks(user_id, request.site_url)
-        if any(task.completed_at is None for task in tasks):
-            raise HTTPException(409, "Complete the existing tasks before starting the next analysis.")
-        stages = next_stages(await self.covered_stages(user_id, request.site_url), request.website_number_of_pages)
-        if not stages:
-            raise HTTPException(409, "All nine stages have been covered.")
+        covered = await self.covered_stages(user_id, request.site_url)
+        assigned_stages = next_stage_bundle(covered, request.website_number_of_pages)
+        phase = "framework" if assigned_stages else ("review-results" if request.mode == "review" else "visibility-opportunities")
         run = SEOReport(
             user_id=user_id, site_url=request.site_url, report="", summary="",
-            status="running", stages=stages,
-            preferences=request.model_dump(exclude={"site_url"}),
+            status="running", stages=assigned_stages,
+            preferences={
+                **request.model_dump(mode="json", exclude={"site_url"}),
+                "phase": phase, "assigned_stages": assigned_stages,
+            },
         )
         self.db.add(run)
         await self.db.commit()
         return run
 
-    async def finish_run(self, run_id, draft: AnalysisDraft):
+    async def finish_run(self, run_id, draft: AnalysisDraft, evidence: dict | None = None):
         run = await self.db.scalar(select(SEOReport).where(SEOReport.id == run_id).with_for_update())
         if not run or run.status != "running":
             raise ValueError("This analysis reservation is no longer active.")
-        if any(task.stage not in run.stages for task in draft.tasks):
-            raise ValueError("The model returned tasks outside the assigned stages.")
+        existing = await self.get_tasks(run.user_id, run.site_url)
+        existing_by_id = {str(task.id): task for task in existing}
+        if any(task.existing_task_id and task.existing_task_id not in existing_by_id for task in draft.tasks):
+            raise ValueError("Referenced task does not belong to this workspace.")
+        observations = evidence or {}
+        if any(review["task_id"] not in existing_by_id for review in observations.get("reviews", [])):
+            raise ValueError("Reviewed task does not belong to this workspace.")
+        phase = (run.preferences or {}).get("phase", "framework")
+        allowed_stages = set(run.stages) if phase == "framework" else set(SEO_STAGES)
+        if any(task.stage not in allowed_stages for task in draft.tasks):
+            raise ValueError("The model returned a task outside the active SEO framework stage bundle.")
         run.report = draft.report
         run.summary = draft.summary
+        task_stats = {"candidate": len(draft.tasks), "created": 0, "reused": 0, "already_observed": 0}
+        run.evidence = {**observations, "task_generation": task_stats}
         run.status = "completed"
-        seen = set()
+        # Preserve task identity and the user's checkbox state across reviews.
+        def fingerprint(task):
+            check = task.verification
+            field = check.get("field") if isinstance(check, dict) else getattr(check, "field", None)
+            expected = check.get("expected") if isinstance(check, dict) else getattr(check, "expected", None)
+            identity = f"check:{field}:{expected}" if field else " ".join(task.title.casefold().split())
+            return task.scope.strip(), identity
+
+        seen = {fingerprint(task) for task in existing}
+        observed_pages = {page.get("url"): page for page in observations.get("pages", [])}
+        for review in observations.get("reviews", []):
+            existing_by_id[review["task_id"]].review = review
         for position, task in enumerate(draft.tasks):
-            fingerprint = (task.stage, task.scope.strip(), task.title.casefold())
-            if fingerprint in seen:
+            key = fingerprint(task)
+            if task.existing_task_id:
+                task_stats["reused"] += 1
                 continue
-            seen.add(fingerprint)
+            if key in seen:
+                task_stats["reused"] += 1
+                continue
+            if task.verification and check_page(task.verification.model_dump(), observed_pages.get(task.scope))[0] == "observed":
+                task_stats["already_observed"] += 1
+                continue
+            seen.add(key)
+            task_stats["created"] += 1
             self.db.add(SEOTask(
                 report_id=run.id, position=position,
-                **task.model_dump(exclude={"subtasks"}),
+                **task.model_dump(exclude={"subtasks", "existing_task_id"}),
                 subtasks=[SEOSubtask(title=title, position=index) for index, title in enumerate(task.subtasks)],
             ))
         # A report and its task batch become visible together, or neither does.
@@ -162,17 +211,29 @@ class SEOWorkspaceService:
             for sub in task.subtasks:
                 sub.completed_at = (sub.completed_at or now) if completed else None
         task.completed_at = (task.completed_at or now) if all(sub.completed_at for sub in task.subtasks) else None
+        # Reopening starts a new implementation cycle; retain old evidence in reports.
+        if task.completed_at is None:
+            task.review = {}
         await self.db.commit()
         return task_json(task)
 
     async def agent_context(self, user_id, site_url):
         reports = await SEOReportsService(self.db).get_user_reports(user_id, site_url, limit=2)
         tasks = await self.get_tasks(user_id, site_url)
+        covered = await self.covered_stages(user_id, site_url)
+        # Rotate checks by oldest observation so a bounded run does not starve older tasks.
+        review_queue = sorted(tasks, key=lambda task: ((task.review or {}).get("checked_at", ""), str(task.id)))
         return {
             "previous_reports": [{"date": report.created_at.isoformat(), "summary": (report.summary or report.report)[:600]} for report in reports],
             "pending_count": sum(task.completed_at is None for task in tasks),
             "completed_count": sum(task.completed_at is not None for task in tasks),
-            "recent_tasks": [{"stage": task.stage, "title": task.title, "scope": task.scope,
+            "covered_stages": sorted(covered),
+            "recent_tasks": [{"id": str(task.id), "stage": task.stage, "title": task.title, "scope": task.scope,
+                              "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+                              "verification": task.verification,
+                              "last_measurement_at": (task.review or {}).get("performance", {}).get("checked_at", ""),
                               "status": "user_completed" if task.completed_at else "pending"}
-                             for task in tasks[-12:]],
+                             for task in review_queue[:12]],
+            "tasks_omitted": max(0, len(tasks) - 12),
+            "previous_pages": (reports[0].evidence or {}).get("pages", []) if reports else [],
         }

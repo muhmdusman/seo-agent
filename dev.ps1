@@ -263,7 +263,7 @@ if (-not (Test-Path $envLocal)) {
     # ASCII, no BOM: Next.js reads this as a plain key=value file.
     [System.IO.File]::WriteAllText(
         $envLocal,
-        "NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1`n",
+        "BACKEND_API_URL=http://localhost:8000/api/v1`n",
         (New-Object System.Text.UTF8Encoding $false)
     )
     Write-Ok 'created frontend\.env.local'

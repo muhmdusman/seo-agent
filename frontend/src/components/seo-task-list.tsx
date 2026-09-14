@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, CheckCheck } from 'lucide-react';
-import { STAGE_LABELS, type SEOTask } from '@/lib/seo-types';
+import { REVIEW_LABELS, slugLabel, stageLabel, type SEOTask } from '@/lib/seo-types';
+import { SEOReviewDetails } from '@/components/seo-review-summary';
 
 interface Props {
   tasks: SEOTask[];
@@ -19,12 +20,13 @@ export function SEOTaskList({ tasks, disabled, onChange }: Props) {
   function taskRow(task: SEOTask, isCompleted = false) {
     const isOpen = isCompleted ? expanded === task.id : openId === task.id;
     const done = task.subtasks.filter(subtask => subtask.completed_at).length;
+    const review = task.review?.status ? task.review : null;
     return (
       <div key={task.id} className="border-b border-zinc-200 py-3">
         <div className="flex items-start gap-3">
           <input type="checkbox" checked={!!task.completed_at} disabled={disabled}
             onChange={event => void onChange(task, event.target.checked)}
-            aria-label={`${isCompleted ? 'Reopen' : 'Complete'} ${task.title}`}
+            aria-label={`${isCompleted ? 'Reopen' : 'Mark complete'} ${task.title}`}
             className="mt-1 h-4 w-4 shrink-0 accent-emerald-700 disabled:opacity-40" />
           <button type="button" aria-expanded={isOpen} aria-controls={`task-${task.id}`}
             onClick={() => setExpanded(isOpen ? '' : task.id)} className="flex min-w-0 flex-1 items-start gap-2 text-left">
@@ -38,7 +40,15 @@ export function SEOTaskList({ tasks, disabled, onChange }: Props) {
             {isOpen ? <ChevronDown className="mt-0.5 h-4 w-4 shrink-0" /> : <ChevronRight className="mt-0.5 h-4 w-4 shrink-0" />}
           </button>
         </div>
+        <div className="ml-7 mt-2 space-y-1 text-xs text-zinc-500 [overflow-wrap:anywhere]">
+          {task.completed_at && <p>Marked complete {new Date(task.completed_at).toLocaleDateString()}</p>}
+          {review ? <>
+            <p>{REVIEW_LABELS[review.status]} - Last check <time dateTime={review.checked_at}>{new Date(review.checked_at).toLocaleString()}</time></p>
+            <p>Performance: {review.performance ? slugLabel(review.performance.status) : 'Not assessed'}</p>
+          </> : <p>Not checked yet - Performance: Not assessed</p>}
+        </div>
         {isOpen && <div id={`task-${task.id}`} className="ml-7 mt-4 space-y-4 text-sm [overflow-wrap:anywhere]">
+          {review && <SEOReviewDetails review={review} />}
           <p className="text-xs text-zinc-500">{task.scope}</p>
           <div><h4 className="font-medium text-zinc-800">Finding</h4><p className="mt-1 whitespace-pre-wrap text-zinc-600">{task.evidence}</p></div>
           <div><h4 className="font-medium text-zinc-800">Why it matters</h4><p className="mt-1 whitespace-pre-wrap text-zinc-600">{task.why_it_matters}</p></div>
@@ -55,7 +65,6 @@ export function SEOTaskList({ tasks, disabled, onChange }: Props) {
             <summary className="cursor-pointer text-xs font-medium text-zinc-700">Coding-agent instruction</summary>
             <p className="mt-2 whitespace-pre-wrap border-l-2 border-emerald-200 pl-3">{task.agent_prompt}</p>
           </details>
-          {task.completed_at && <p className="text-xs text-zinc-500">Marked complete {new Date(task.completed_at).toLocaleDateString()}</p>}
         </div>}
       </div>
     );
@@ -68,13 +77,14 @@ export function SEOTaskList({ tasks, disabled, onChange }: Props) {
         <h2 className="text-base font-semibold text-zinc-900">Tasks</h2>
         <span className="text-xs text-zinc-500">{pending.length} open</span>
       </div>
-      {pending.length === 0 && <p className="py-6 text-sm text-zinc-500">{completed.length ? 'All tasks completed.' : 'No open tasks.'}</p>}
+      <p className="mt-3 text-xs text-zinc-500">Marked complete records your work. An observed check confirms a condition, not a ranking improvement.</p>
+      {pending.length === 0 && <p className="py-6 text-sm text-zinc-500">{completed.length ? 'All tasks marked complete.' : 'No open tasks.'}</p>}
       {stages.map(stage => <section key={stage} className="mt-5">
-        <h3 className="text-xs font-semibold text-emerald-800">{STAGE_LABELS[stage] ?? stage}</h3>
+        <h3 className="text-xs font-semibold text-emerald-800">{stageLabel(stage)}</h3>
         {pending.filter(task => task.stage === stage).map(task => taskRow(task))}
       </section>)}
       {completed.length > 0 && <section className="mt-8">
-        <h3 className="flex items-center gap-2 text-sm font-medium text-zinc-500"><CheckCheck className="h-4 w-4 text-emerald-700" />Completed ({completed.length})</h3>
+        <h3 className="flex items-center gap-2 text-sm font-medium text-zinc-500"><CheckCheck className="h-4 w-4 text-emerald-700" />Marked complete ({completed.length})</h3>
         {completed.map(task => taskRow(task, true))}
       </section>}
     </section>
