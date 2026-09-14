@@ -27,3 +27,6 @@ app-*.zip
 
 *.log
 *log.err
+
+ecs-backend-task-definition.json
+*.json

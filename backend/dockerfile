@@ -58,6 +58,8 @@ COPY --from=builder /app/services /app/services
 COPY --from=builder /app/system-prompt /app/system-prompt
 COPY --from=builder /app/tools /app/tools
 COPY --from=builder /app/workers /app/workers
+COPY --from=builder /app/alembic.ini /app/alembic.ini
+COPY --from=builder /app/alembic /app/alembic
 
 # Give the runtime user ownership of the application.
 RUN chown -R appuser:appuser /app
