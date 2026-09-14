@@ -30,3 +30,4 @@ app-*.zip
 
 ecs-backend-task-definition.json
 *.json
+.env.production
