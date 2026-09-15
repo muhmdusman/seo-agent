@@ -97,7 +97,11 @@ async def google_callback(
 
 
 @router.get("/me")
-async def get_me(user=Depends(authenticate)):
+async def get_me(
+    response: Response,
+    user=Depends(authenticate),
+):
+    response.headers["Cache-Control"] = "no-store"
     return {"user_id": user["sub"]}
 
 
