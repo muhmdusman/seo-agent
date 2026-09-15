@@ -37,9 +37,10 @@ class SEOReportsService:
             select(SEOReport)
             .where(
                 SEOReport.user_id == user_id,
+                SEOReport.status == "completed",
             )
             .order_by(
-                SEOReport.created_at.desc()
+                SEOReport.created_at.desc(), SEOReport.id.desc()
             )
             .limit(limit)
         )

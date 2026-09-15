@@ -4,7 +4,6 @@ import type { ComponentPropsWithoutRef } from 'react';
 import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 interface AnalysisDisplayProps {
   siteUrl: string;
@@ -133,17 +132,17 @@ const markdownComponents: Components = {
 
 export function AnalysisDisplay({ siteUrl, analysis }: AnalysisDisplayProps) {
   return (
-    <Card>
-      <CardHeader className="gap-1 border-b border-slate-200/70 pb-4">
+    <section className="min-w-0 [overflow-wrap:anywhere]">
+      <div className="gap-1 border-b border-slate-200/70 pb-4">
         <p className="text-xs font-medium uppercase tracking-wide text-indigo-600">
-          SEO analysis
+          SEO review & fixes
         </p>
         <h2 className="break-all text-base font-semibold text-slate-900">
           {siteUrl}
         </h2>
-      </CardHeader>
+      </div>
 
-      <CardContent className="pt-6">
+      <div className="pt-6">
         <div className="flex flex-col gap-3">
           <Markdown
             remarkPlugins={[remarkGfm]}
@@ -152,7 +151,7 @@ export function AnalysisDisplay({ siteUrl, analysis }: AnalysisDisplayProps) {
             {analysis}
           </Markdown>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

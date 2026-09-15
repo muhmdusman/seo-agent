@@ -10,7 +10,7 @@ import { getCurrentUserId } from '@/lib/auth';
 const capabilities = [
   'Pulls 30 days of Search Console performance',
   'Reads your live page titles, meta and headings',
-  'Returns five ranked, evidence-backed fixes',
+  'Returns up to four ranked, evidence-backed fixes',
   'Tailored recommendations based on your goals',
 ];
 
@@ -66,8 +66,8 @@ export default function Home() {
               Search Console Agent
             </h1>
             <p className="text-sm leading-relaxed text-slate-300">
-              Turn your Search Console data into a ranked list of SEO fixes,
-              backed by your own queries and pages.
+              Turn your Search Console data into SEO review & fixes,
+              backed by your own queries and pages, plus visibility opportunities.
             </p>
           </div>
         </div>

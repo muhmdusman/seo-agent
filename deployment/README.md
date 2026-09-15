@@ -67,8 +67,9 @@ chmod +x deployment/scripts/deploy-ecs.sh
 
 ### 5. **Update Frontend Environment**
 ```bash
-# Get ECS public IP from AWS Console
-# Update Amplify: NEXT_PUBLIC_API_BASE_URL=http://YOUR_IP:8000/api/v1
+# Configure the Amplify build with the server-side rewrite target
+# BACKEND_API_URL=https://YOUR_API_GATEWAY_ID.execute-api.us-east-1.amazonaws.com/api/v1
+# Browser requests remain same-origin at /api/v1; do not expose an ALB/ECS URL.
 ```
 
 **Done! 🎉**

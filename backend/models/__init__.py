@@ -6,3 +6,4 @@ from .oauth_credential import OAuthCredential
 from .session import Session
 from .job import Job
 from .seo_report import SEOReport
+from .seo_task import SEOTask, SEOSubtask

@@ -33,6 +33,7 @@ class ApiClient {
     const { redirectOnUnauthorized = true, ...fetchOptions } = options;
 
     const config: RequestInit = {
+      cache: 'no-store',
       ...fetchOptions,
       credentials: 'include',
       headers: {
@@ -52,7 +53,8 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+        const body = await response.json().catch(() => null);
+        throw new Error(typeof body?.detail === 'string' ? body.detail : `API Error: ${response.status}`);
       }
 
       return response.json();

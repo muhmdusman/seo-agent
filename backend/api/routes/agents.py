@@ -1,93 +1,82 @@
+import asyncio
 import json
 import logging
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from anyio import CancelScope
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from agents.weekly_agent import WeeklyAgent
+from agents.weekly_agent import WeeklyAgent, STATUS_COMPLETED, STATUS_FAILED
 from core.config import settings
-from db.dbconfig import AsyncSessionLocal
+from db.dbconfig import AsyncSessionLocal, get_db
 from dependencies.auth import authenticate
+from schemas.seo import AnalysisRequest
+from services.oauth_service import OAuthService
+from services.search_console_service import SearchConsoleService
+from services.seo_workspace_service import SEOWorkspaceService
 
 logger = logging.getLogger(__name__)
-
-router = APIRouter(
-    prefix="/agent",
-    tags=["Agent"],
-)
+router = APIRouter(prefix="/agent", tags=["Agent"])
 
 
-@router.get("/weekly")
-async def weekly_agent(
-    request: Request,
-    site_url: str,
-    website_number_of_pages: str,
-    website_type: str,
-    user_goal: str,
-    user=Depends(authenticate),
-):
-    """Stream a weekly SEO analysis as Server-Sent Events.
+@router.post("/weekly")
+async def weekly_agent(request: Request, body: AnalysisRequest,
+                       user=Depends(authenticate), db: AsyncSession = Depends(get_db)):
+    user_id = UUID(user["sub"])
+    account = await OAuthService(db).get_valid_google_account(user_id)
+    if account is None:
+        raise HTTPException(403, "Reconnect your Google account.")
+    sites = await SearchConsoleService().list_sites(account.access_token)
+    if not any(site.get("siteUrl") == body.site_url and site.get("permissionLevel") != "siteUnverifiedUser"
+               for site in sites.get("siteEntry", [])):
+        raise HTTPException(403, "This property is not available in your Search Console account.")
 
-    This route deliberately does not take `db: AsyncSession = Depends(get_db)`.
-    FastAPI closes dependency-provided sessions as soon as the handler returns,
-    which for a StreamingResponse is *before* the generator body runs. The
-    agent would then be holding a session whose transaction has already been
-    torn down, and the first write attempt failed with
-    "current transaction is aborted, commands ignored until end of transaction
-    block". The stream owns its own session instead, for the full lifetime of
-    the stream.
-    """
+    run = await SEOWorkspaceService(db).reserve_run(user_id, body)
+    run_id = run.id
 
     async def stream():
-        async with AsyncSessionLocal() as db:
-            agent = WeeklyAgent(db)
-
+        # The reservation is committed; slow external work owns a fresh session.
+        async with AsyncSessionLocal() as stream_db:
+            service = SEOWorkspaceService(stream_db)
             try:
-                async for chunk in agent.run(
-                    user_id=user["sub"],
-                    site_url=site_url,
-                    website_number_of_pages=website_number_of_pages,
-                    website_type=website_type,
-                    user_goal=user_goal,
-                ):
-                    yield f"data: {json.dumps({'message': chunk})}\n\n"
-
+                async with asyncio.timeout(240):
+                    agent = WeeklyAgent(stream_db)
+                    async for chunk in agent.run(
+                        user_id=str(user_id), run_id=run_id,
+                        stages=run.stages,
+                        phase=(run.preferences or {}).get("phase", "framework"),
+                        **body.model_dump(),
+                    ):
+                        if isinstance(chunk, dict):
+                            event = chunk
+                        elif chunk == STATUS_COMPLETED:
+                            event = {"type": "completed", "message": chunk}
+                        elif chunk == STATUS_FAILED:
+                            event = {"type": "error", "message": "Review failed. Your saved report and tasks are unchanged."}
+                        else:
+                            event = {"type": "status", "message": chunk}
+                        yield f"data: {json.dumps(event)}\n\n"
+            except asyncio.CancelledError:
+                raise
             except Exception:
-                # The generator is already streaming, so an HTTPException here
-                # could not change the status code. Report in-band instead of
-                # letting the connection drop with no explanation.
                 logger.exception("Weekly agent stream failed")
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Review stopped. Your saved work is unchanged.'})}\n\n"
+            finally:
+                # A killed process is recovered by the reservation TTL.
+                # This conditional update leaves successful runs intact.
+                with CancelScope(shield=True):
+                    await service.fail_run(run_id)
 
-                await db.rollback()
-
-                message = (
-                    "The analysis stopped unexpectedly. "
-                    "Check the server logs for details."
-                )
-                yield f"data: {json.dumps({'message': message})}\n\n"
-                yield f"data: {json.dumps({'message': 'Failed.'})}\n\n"
-
-    response = StreamingResponse(
-        stream(),
-        media_type="text/event-stream",
-        headers={
-            # Without this, a proxy may buffer the whole stream and defeat the
-            # point of streaming progress.
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
+    response = StreamingResponse(stream(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-store", "X-Accel-Buffering": "no",
+    })
     new_access_token = getattr(request.state, "new_access_token", None)
-
     if new_access_token:
         response.set_cookie(
-            key="access_token",
-            value=new_access_token,
-            httponly=True,
-            secure=settings.APP_URL.startswith("https://"),
-            samesite="lax",
-            max_age=60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES,
-            path="/",
+            key="access_token", value=new_access_token, httponly=True,
+            secure=settings.APP_URL.startswith("https://"), samesite="lax",
+            max_age=60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES, path="/",
         )
-
     return response
