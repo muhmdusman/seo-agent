@@ -36,35 +36,35 @@
 @layer base {
   :root {
     /*
-     * Surfaces stay light so the translucent glass panels read against the
-     * aurora backdrop while body copy remains dark enough to pass contrast.
+     * Warm, professional dashboard tokens. Surfaces are solid instead of
+     * frosted so cards stay crisp against the light skin-toned background.
      * Pinning color-scheme stops the browser restyling native controls dark
      * and reintroducing unreadable pairings.
      */
     color-scheme: light;
 
-    --background: 220 33% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 222 47% 11%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 220 20% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 220 20% 96%;
+    --background: 31 62% 95%;
+    --foreground: 24 38% 12%;
+    --card: 35 100% 99%;
+    --card-foreground: 24 38% 12%;
+    --popover: 35 100% 99%;
+    --popover-foreground: 24 38% 12%;
+    --primary: 160 64% 24%;
+    --primary-foreground: 35 100% 98%;
+    --secondary: 31 58% 91%;
+    --secondary-foreground: 24 38% 16%;
+    --muted: 31 48% 92%;
     /* 4.7:1 on white, so secondary copy and placeholders stay legible. */
-    --muted-foreground: 220 12% 42%;
-    --accent: 226 60% 96%;
-    --accent-foreground: 243 65% 34%;
+    --muted-foreground: 24 20% 36%;
+    --accent: 154 42% 90%;
+    --accent-foreground: 160 64% 20%;
     --destructive: 0 72% 42%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 22% 90%;
-    --input: 220 22% 88%;
-    --ring: 243 75% 58%;
-    --brand: 243 75% 58%;
-    --brand-foreground: 0 0% 100%;
+    --border: 28 38% 82%;
+    --input: 28 38% 78%;
+    --ring: 160 64% 29%;
+    --brand: 160 64% 24%;
+    --brand-foreground: 35 100% 98%;
     --radius: 0.75rem;
   }
 }
@@ -88,7 +88,7 @@
   h2,
   h3,
   h4 {
-    letter-spacing: -0.018em;
+    letter-spacing: 0;
   }
 
   code,
@@ -97,44 +97,40 @@
     font-family: var(--font-mono);
   }
 
-  /* Custom scrollbar for dark theme */
+  /* Custom scrollbar for the warm light dashboard theme. */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
 
   ::-webkit-scrollbar-track {
-    background: rgba(15, 23, 42, 0.5);
+    background: hsl(31 58% 90%);
     border-radius: 5px;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(99, 102, 241, 0.5);
+    background: hsl(28 34% 67%);
     border-radius: 5px;
-    border: 2px solid rgba(15, 23, 42, 0.5);
+    border: 2px solid hsl(31 58% 90%);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(99, 102, 241, 0.7);
+    background: hsl(160 46% 34%);
   }
 
   /* Firefox scrollbar */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(99, 102, 241, 0.5) rgba(15, 23, 42, 0.5);
+    scrollbar-color: hsl(28 34% 67%) hsl(31 58% 90%);
   }
 }
 
 @layer components {
-  /*
-   * The aurora wash that the glass panels sit on. Without a non-flat backdrop,
-   * backdrop-filter has nothing to sample and the panels look like plain
-   * white boxes.
-   */
   .app-aurora {
     position: relative;
     isolation: isolate;
-    background-color: hsl(var(--background));
+    background:
+      linear-gradient(180deg, hsl(30 68% 94%) 0%, hsl(32 58% 96%) 42%, hsl(35 60% 98%) 100%);
   }
 
   .app-aurora::before {
@@ -143,60 +139,29 @@
     inset: 0;
     z-index: -1;
     pointer-events: none;
+    opacity: 0.5;
     background-image:
-      radial-gradient(
-        42rem 42rem at 12% -8%,
-        hsl(243 82% 68% / 0.28),
-        transparent 60%
-      ),
-      radial-gradient(
-        38rem 38rem at 92% 4%,
-        hsl(199 89% 60% / 0.24),
-        transparent 62%
-      ),
-      radial-gradient(
-        44rem 34rem at 72% 104%,
-        hsl(268 76% 66% / 0.2),
-        transparent 60%
-      );
+      linear-gradient(90deg, hsl(28 42% 82% / 0.35) 1px, transparent 1px),
+      linear-gradient(0deg, hsl(28 42% 82% / 0.28) 1px, transparent 1px);
+    background-size: 64px 64px;
   }
 
-  /* Frosted surface used for cards, headers and controls. */
+  /* Solid warm surfaces used for cards and controls. */
   .glass {
-    background-color: hsl(0 0% 100% / 0.62);
-    backdrop-filter: blur(20px) saturate(170%);
-    -webkit-backdrop-filter: blur(20px) saturate(170%);
-    border: 1px solid hsl(0 0% 100% / 0.7);
+    background-color: hsl(35 100% 98% / 0.96);
+    border: 1px solid hsl(28 38% 82%);
     box-shadow:
-      inset 0 1px 0 0 hsl(0 0% 100% / 0.55),
-      0 1px 2px 0 hsl(222 47% 11% / 0.04),
-      0 12px 32px -12px hsl(222 47% 11% / 0.16);
+      0 1px 2px 0 hsl(24 38% 12% / 0.04),
+      0 16px 36px -24px hsl(24 38% 12% / 0.18);
   }
 
-  /* Denser tint for controls that must stay readable while overlapping text. */
+  /* Slightly denser surface for controls and nested cards. */
   .glass-strong {
-    background-color: hsl(0 0% 100% / 0.82);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border: 1px solid hsl(0 0% 100% / 0.8);
+    background-color: hsl(35 100% 99%);
+    border: 1px solid hsl(28 38% 80%);
     box-shadow:
-      inset 0 1px 0 0 hsl(0 0% 100% / 0.6),
-      0 8px 28px -10px hsl(222 47% 11% / 0.18);
-  }
-
-  /*
-   * Safari on older iOS and Firefox with backdrop-filter disabled render the
-   * translucent fill with no blur, which drops text contrast. Fall back to a
-   * near-opaque surface in that case.
-   */
-  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .glass {
-      background-color: hsl(0 0% 100% / 0.95);
-    }
-
-    .glass-strong {
-      background-color: hsl(0 0% 100% / 0.97);
-    }
+      0 1px 2px 0 hsl(24 38% 12% / 0.05),
+      0 10px 28px -22px hsl(24 38% 12% / 0.2);
   }
 }
 

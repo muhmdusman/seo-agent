@@ -18,7 +18,9 @@ def belongs_to_property(url: str, site: str) -> bool:
             domain = site.removeprefix("sc-domain:").lower()
             return parsed.hostname == domain or parsed.hostname.endswith("." + domain)
         root = urlsplit(site)
-        return (parsed.scheme, parsed.hostname, parsed.port) == (root.scheme, root.hostname, root.port) and parsed.path.startswith(root.path)
+        path = parsed.path or "/"
+        root_path = root.path or "/"
+        return (parsed.scheme, parsed.hostname, parsed.port) == (root.scheme, root.hostname, root.port) and path.startswith(root_path)
     except ValueError:
         return False
 

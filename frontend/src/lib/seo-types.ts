@@ -48,6 +48,7 @@ export interface SEOReport {
     competitor_urls?: string[];
   };
   evidence?: {
+    core_web_vitals?: CompactCoreWebVitals | null;
     reviews?: SEOTaskReview[];
     limitations?: string[];
     task_generation?: {
@@ -56,6 +57,80 @@ export interface SEOReport {
       reused: number;
       already_observed: number;
     };
+  };
+}
+
+export interface MetricSnapshot {
+  key?: string;
+  label?: string;
+  value?: number | null;
+  unit?: string;
+  display_value?: string;
+  category?: string;
+  score?: number | null;
+}
+
+export interface PageSpeedStrategySnapshot {
+  strategy: 'mobile' | 'desktop' | string;
+  requested_url?: string;
+  final_url?: string;
+  fetch_time?: string;
+  lighthouse_version?: string;
+  overall_category?: string;
+  origin_fallback?: boolean;
+  scores: {
+    performance?: number | null;
+    accessibility?: number | null;
+    best_practices?: number | null;
+    seo?: number | null;
+  };
+  field: Record<string, MetricSnapshot>;
+  lab: Record<string, MetricSnapshot>;
+  opportunities?: { id: string; label: string; detail: string; score?: number | null; savings_ms?: number }[];
+  warnings?: string[];
+}
+
+export interface CompactCoreWebVitals {
+  status?: string;
+  collected_at?: string;
+  url?: string;
+  strategies?: Record<string, {
+    scores?: PageSpeedStrategySnapshot['scores'];
+    field?: Record<string, MetricSnapshot>;
+    lab?: Record<string, MetricSnapshot>;
+  }>;
+  errors?: Record<string, string>;
+  error?: string;
+}
+
+export interface HttpHeaderSnapshot {
+  status?: string;
+  checked_at?: string;
+  requested_url?: string;
+  final_url?: string;
+  status_code?: number;
+  http_version?: string;
+  headers?: Record<string, string>;
+  redirects?: { status_code: number; location: string }[];
+  error?: string;
+}
+
+export interface AuditSnapshot {
+  site_url: string;
+  url: string;
+  collected_at: string;
+  core_web_vitals: {
+    status?: string;
+    collected_at?: string;
+    url?: string;
+    strategies?: Record<string, PageSpeedStrategySnapshot>;
+    errors?: Record<string, string>;
+    error?: string;
+  };
+  http_headers: HttpHeaderSnapshot;
+  compact_context: {
+    core_web_vitals?: CompactCoreWebVitals | null;
+    http_headers?: HttpHeaderSnapshot | null;
   };
 }
 
@@ -123,5 +198,5 @@ export const REVIEW_LABELS: Record<SEOTaskReview['status'], string> = {
   observed: 'Saved condition observed',
   not_observed: 'Saved condition not observed',
   manual_review: 'Manual review needed',
-  unavailable: 'Check unavailable',
+  unavailable: 'Evidence queued',
 };

@@ -58,8 +58,9 @@ class SEOReviewService:
     def __init__(self, search_console=None):
         self.search_console = search_console or SearchConsoleService()
 
-    async def review(self, site_url, history, pages, access_token, now=None):
+    async def review(self, site_url, history, pages, access_token, now=None, search_console_site_url=None):
         now = now or datetime.now(timezone.utc)
+        measurement_site_url = search_console_site_url or site_url
         by_url = {page.get("url"): page for page in pages}
         previous = {page.get("url"): page for page in history.get("previous_pages", [])}
         reviews, measured = [], 0
@@ -83,7 +84,7 @@ class SEOReviewService:
                     performance = {"status": "deferred", "detail": "The four-task measurement budget was reached. A later review will check more work."}
                 else:
                     measured += 1
-                    performance = await self._performance(access_token, site_url, task["scope"], windows)
+                    performance = await self._performance(access_token, measurement_site_url, task["scope"], windows)
                     performance["checked_at"] = now.isoformat()
             review["performance"] = performance
             reviews.append(review)

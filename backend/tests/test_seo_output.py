@@ -10,6 +10,7 @@ from agents.output.seo_review import (
     AnalysisOutputError, INVALID_OUTPUT_MESSAGE, MAX_REPAIR_INPUT_CHARS,
     analysis_response_format, formatting_prompt,
 )
+from agents.prompts.seo_review import CONTRACT
 from agents.weekly_agent import WeeklyAgent
 from services.seo_task_generation_service import build_fallback_tasks
 from schemas.seo import AnalysisDraft
@@ -36,11 +37,18 @@ class OutputTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("title", task["properties"])
         self.assertEqual(set(task["required"]), set(task["properties"]))
         self.assertIn({"type": "null"}, task["properties"]["verification"]["anyOf"])
+        self.assertIn({"type": "null"}, task["properties"]["existing_task_id"]["anyOf"])
+        self.assertIn("Always include this key", task["properties"]["existing_task_id"]["description"])
         self.assertNotIn("default", task["properties"]["verification"])
         self.assertFalse(schema["additionalProperties"])
         for definition in schema["$defs"].values():
             self.assertFalse(definition["additionalProperties"])
         self.assertEqual(analysis_response_format(), response_format)
+
+    def test_prompt_contract_requires_nullable_task_fields(self):
+        self.assertIn("existing_task_id and verification", CONTRACT)
+        self.assertIn("Set existing_task_id to null for new tasks", CONTRACT)
+        self.assertIn("Set verification to null", CONTRACT)
 
     def test_model_request_enforces_schema_without_provider_streaming(self):
         agent = WeeklyAgent(None)

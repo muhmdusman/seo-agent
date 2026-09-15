@@ -32,8 +32,9 @@ all nine stages in one turn.
   after a saved task is confirmed fixed; log the result in evidence.
 - **Performance:** PageSpeed/Lighthouse for LCP, INP, CLS; CrUX history when
   available. Say when field data is unavailable.
-- **Raw HTTP/HTML:** fetch headers and source for status, redirects, robots,
-  canonical, noindex, metadata, and rendering comparisons.
+- **Raw HTTP/HTML:** fetch headers and compact source-HTML signals for status,
+  redirects, robots, canonical, noindex, metadata, and SSR/CSR rendering
+  strategy checks. Do not pass full source HTML to the model.
 
 ## Step 3 — Resume logic
 
