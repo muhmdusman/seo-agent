@@ -1,4 +1,4 @@
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, StringConstraints
 
@@ -32,8 +32,15 @@ class TaskDraft(BaseModel):
     manual_fix: Annotated[NonEmpty, Field(max_length=4000)]
     agent_prompt: Annotated[NonEmpty, Field(max_length=4000)]
     subtasks: list[Annotated[NonEmpty, Field(max_length=500)]] = Field(min_length=1, max_length=8)
-    verification: VerificationCheck | None = None
-    existing_task_id: str | None = Field(default=None, max_length=36)
+    verification: VerificationCheck | None = Field(
+        default=None,
+        description="Always include this key. Use null unless there is one exact observable condition to verify.",
+    )
+    existing_task_id: str | None = Field(
+        default=None,
+        max_length=36,
+        description="Always include this key. Use null for new tasks; only use a saved task id when updating that task.",
+    )
 
 
 class AnalysisDraft(BaseModel):
@@ -53,6 +60,21 @@ class AnalysisRequest(BaseModel):
     mode: Literal["auto", "review", "growth"] = "auto"
     focus: str = Field(default="", max_length=500)
     competitor_urls: list[HttpUrl] = Field(default_factory=list, max_length=3)
+    audit_snapshot: dict[str, Any] | None = Field(
+        default=None,
+        description="Compact Core Web Vitals and HTTP header context fetched by the backend audit endpoint.",
+    )
+
+
+class AuditSnapshotResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    site_url: str
+    url: str
+    collected_at: str
+    core_web_vitals: dict[str, Any]
+    http_headers: dict[str, Any]
+    compact_context: dict[str, Any]
 
 
 class CompletionUpdate(BaseModel):

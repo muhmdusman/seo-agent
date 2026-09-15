@@ -242,93 +242,16 @@ The active checked-in model path uses LiteLLM provider abstraction with `groq/op
 
 The AWS deployment is organized around a public dashboard, a backend API, a Strands-powered SEO agent runtime, persistent storage, and scheduled reporting.
 
-Actual AWS services represented by the repository deployment assets include AWS Amplify, Amazon ECS on Fargate, Amazon ECR, Amazon RDS for PostgreSQL, Amazon EventBridge, AWS Secrets Manager, Amazon CloudWatch, and Amazon Bedrock as the AWS model provider option. The background job layer uses a Redis/Valkey-compatible queue.
-
-
+The documented deployment uses AWS Amplify, an Amazon API Gateway entry point, Amazon ECS on Fargate, Amazon ECR, Amazon RDS for PostgreSQL, Amazon EventBridge, AWS Secrets Manager, AWS IAM, and Amazon CloudWatch. Amazon Bedrock is the AWS model provider option; the checked-in model default uses Groq. The container configuration runs FastAPI, Redis, and a Celery worker together.
 
 ## Architecture Diagram
 
-```mermaid
-flowchart TB
-    USER[User / Website Owner]
-    AMP[AWS Amplify<br/>Next.js dashboard]
-    API[Backend API<br/>FastAPI on Amazon ECS / Fargate]
-    AGENT[Strands SEO Agent<br/>reasoning and orchestration]
-    SKILL[SEO Skills<br/>nine-stage framework]
-    TASKS[Task Management<br/>tasks, reviews, status]
-    HISTORY[(Amazon RDS PostgreSQL<br/>reports, users, tasks, history)]
-    QUEUE[(Redis / Valkey-compatible queue<br/>background jobs)]
-    SCHED[Amazon EventBridge<br/>weekly scheduler]
-    WORKER[Amazon ECS / Fargate<br/>scheduled worker]
-    EMAIL[SMTP Email Delivery<br/>weekly report to inbox]
-    ECR[Amazon ECR<br/>container images]
-    SECRETS[AWS Secrets Manager<br/>runtime secrets]
-    LOGS[Amazon CloudWatch<br/>logs and metrics]
-    BEDROCK[Amazon Bedrock<br/>AWS model option]
+![SeOup Agent architecture with official AWS icons, the dashboard request path, Strands runtime, evidence sources, model providers, persistence, and scheduled email delivery](docs/architecture/seo-agent-architecture.svg)
 
-    subgraph TOOLS["Agent tools and evidence sources"]
-        GSC[Google Search Console<br/>performance, queries, indexing]
-        GSCWRITE[Search Console actions<br/>sitemaps and indexing]
-        SITEMAP[Sitemap analysis<br/>URL discovery and sitemap health]
-        PSI[PageSpeed Insights API<br/>Core Web Vitals and Lighthouse]
-        HTML[Website HTTP / source HTML<br/>headers, metadata, content signals]
-        GOALS[User goals and website context<br/>size, type, priority]
-    end
+[High-resolution PNG](docs/architecture/seo-agent-architecture.png) · [Editable SVG](docs/architecture/seo-agent-architecture.svg) · [Architecture notes and regeneration instructions](docs/architecture/README.md)
 
-    USER --> AMP
-    AMP --> API
-    API --> AGENT
-    AGENT --> SKILL
-    AGENT --> GSC
-    AGENT --> GSCWRITE
-    AGENT --> SITEMAP
-    AGENT --> PSI
-    AGENT --> HTML
-    AGENT --> GOALS
-    AGENT --> BEDROCK
-    AGENT --> TASKS
-    TASKS --> HISTORY
-    AGENT --> HISTORY
-    API --> HISTORY
-    API --> QUEUE
+The request path is **Website owner → Amplify dashboard → API Gateway → FastAPI / Strands runtime**. Results return through the API to the dashboard, while PostgreSQL saves reports, tasks, and history. Redis and Celery support scheduled email reports.
 
-    SCHED --> WORKER
-    WORKER --> AGENT
-    WORKER --> EMAIL
-    EMAIL --> USER
-    WORKER --> HISTORY
-    WORKER --> QUEUE
-
-    ECR -. deploys images .-> API
-    ECR -. deploys images .-> WORKER
-    SECRETS -. injects config .-> API
-    SECRETS -. injects config .-> WORKER
-    API --> LOGS
-    WORKER --> LOGS
-
-    classDef user fill:#fff7ed,stroke:#f59e0b,color:#111827;
-    classDef aws fill:#eef6ff,stroke:#527fff,color:#111827;
-    classDef agent fill:#ecfdf5,stroke:#10b981,color:#111827;
-    classDef tool fill:#f8fafc,stroke:#64748b,color:#111827;
-    class USER user;
-    class AMP,API,HISTORY,QUEUE,SCHED,WORKER,ECR,SECRETS,LOGS,BEDROCK aws;
-    class AGENT,SKILL,TASKS agent;
-    class GSC,GSCWRITE,SITEMAP,PSI,HTML,GOALS,EMAIL tool;
-```
-
-Main agent flow:
-
-```text
-User -> Strands Agent -> Relevant Tools -> Evidence -> SEO Reasoning -> Actions / Tasks / Report
-```
-
-Scheduled workflow:
-
-```text
-Scheduler -> Strands Agent -> SEO Analysis -> Report -> Email -> User
-```
-
-PageSpeed Insights and the dedicated source HTML tool are shown as intended agent tools. They are documented as part of the planned toolset and should be wired after submission without needing to rewrite the architecture.
 
 ## Technology Stack
 

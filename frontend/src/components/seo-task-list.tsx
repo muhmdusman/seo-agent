@@ -21,6 +21,8 @@ export function SEOTaskList({ tasks, disabled, onChange }: Props) {
     const isOpen = isCompleted ? expanded === task.id : openId === task.id;
     const done = task.subtasks.filter(subtask => subtask.completed_at).length;
     const review = task.review?.status ? task.review : null;
+    const performance = review?.performance;
+    const showPerformance = performance && performance.status !== 'not_completed';
     return (
       <div key={task.id} className="border-b border-zinc-200 py-3">
         <div className="flex items-start gap-3">
@@ -29,7 +31,7 @@ export function SEOTaskList({ tasks, disabled, onChange }: Props) {
             aria-label={`${isCompleted ? 'Reopen' : 'Mark complete'} ${task.title}`}
             className="mt-1 h-4 w-4 shrink-0 accent-emerald-700 disabled:opacity-40" />
           <button type="button" aria-expanded={isOpen} aria-controls={`task-${task.id}`}
-            onClick={() => setExpanded(isOpen ? '' : task.id)} className="flex min-w-0 flex-1 items-start gap-2 text-left">
+            onClick={() => setExpanded(isOpen ? '' : task.id)} className="flex min-w-0 flex-1 cursor-pointer items-start gap-2 text-left">
             <span className="min-w-0 flex-1">
               <span className={`block break-words text-sm font-medium ${isCompleted ? 'text-zinc-500 line-through' : 'text-zinc-900'}`}>{task.title}</span>
               <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
@@ -43,12 +45,12 @@ export function SEOTaskList({ tasks, disabled, onChange }: Props) {
         <div className="ml-7 mt-2 space-y-1 text-xs text-zinc-500 [overflow-wrap:anywhere]">
           {task.completed_at && <p>Marked complete {new Date(task.completed_at).toLocaleDateString()}</p>}
           {review ? <>
-            <p>{REVIEW_LABELS[review.status]} - Last check <time dateTime={review.checked_at}>{new Date(review.checked_at).toLocaleString()}</time></p>
-            <p>Performance: {review.performance ? slugLabel(review.performance.status) : 'Not assessed'}</p>
-          </> : <p>Not checked yet - Performance: Not assessed</p>}
+            <p>Verification: {REVIEW_LABELS[review.status]} - Last checked <time dateTime={review.checked_at}>{new Date(review.checked_at).toLocaleString()}</time></p>
+            {showPerformance && <p>Performance: {slugLabel(performance.status)}</p>}
+          </> : <p>Ready for review - Performance: Pending</p>}
         </div>
         {isOpen && <div id={`task-${task.id}`} className="ml-7 mt-4 space-y-4 text-sm [overflow-wrap:anywhere]">
-          {review && <SEOReviewDetails review={review} />}
+          {review && <SEOReviewDetails review={review} showHeader={false} showUrl={false} />}
           <p className="text-xs text-zinc-500">{task.scope}</p>
           <div><h4 className="font-medium text-zinc-800">Finding</h4><p className="mt-1 whitespace-pre-wrap text-zinc-600">{task.evidence}</p></div>
           <div><h4 className="font-medium text-zinc-800">Why it matters</h4><p className="mt-1 whitespace-pre-wrap text-zinc-600">{task.why_it_matters}</p></div>

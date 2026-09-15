@@ -7,7 +7,10 @@ import httpx
 
 from agents.prompts.seo_review import build_prompt
 from services.scraper_service import ScraperService, belongs_to_property, public_address
+from services.search_console_service import property_covers_request, verified_property_match
 from services.seo_review_service import SEOReviewService, check_page, comparison_windows, summarize_rows
+from tools.page_speed_tool import compact_core_web_vitals, summarize_pagespeed_result
+from tools.source_html_tool import compact_http_headers, fetch_source_rendering_snapshot, property_home_url
 
 
 class ReviewTests(unittest.IsolatedAsyncioTestCase):
@@ -94,12 +97,100 @@ class ReviewTests(unittest.IsolatedAsyncioTestCase):
         }, 5760)
         self.assertLessEqual(len(prompt), 5760)
 
+    def test_prompt_can_drop_audit_context_under_tiny_budget(self):
+        prompt = build_prompt({
+            "property": "https://example.com/", "size": "1-10",
+            "website_type": "service-based", "goal": "leads", "mode": "auto",
+            "phase": "framework",
+            "assigned_stages": ["technical-foundation"],
+            "previous_reports": [], "queries": [], "pages": [], "competitors": [],
+            "saved_tasks": [], "reviews": [],
+            "core_web_vitals": {"status": "ok", "strategies": {"mobile": {"lab": {"lcp": {"display_value": "2.2s"}}}}},
+            "http_headers": {"headers": {"content-security-policy": "x" * 2000}},
+        }, 5760)
+        data = json.loads(prompt.split("\nINPUT DATA:\n", 1)[1])
+        self.assertIn("http_headers", data["budget_omissions"])
+
+    def test_pagespeed_result_is_normalized_and_compacted(self):
+        result = summarize_pagespeed_result({
+            "id": "https://example.com/",
+            "loadingExperience": {
+                "overall_category": "AVERAGE",
+                "metrics": {
+                    "LARGEST_CONTENTFUL_PAINT_MS": {"percentile": 2800, "category": "AVERAGE"},
+                    "CUMULATIVE_LAYOUT_SHIFT_SCORE": {"percentile": 4, "category": "FAST"},
+                },
+            },
+            "lighthouseResult": {
+                "requestedUrl": "https://example.com/",
+                "finalUrl": "https://example.com/",
+                "categories": {"performance": {"score": 0.72}, "seo": {"score": 0.91}},
+                "audits": {
+                    "largest-contentful-paint": {"numericValue": 3100, "displayValue": "3.1 s", "score": 0.48},
+                    "render-blocking-resources": {
+                        "title": "Eliminate render-blocking resources",
+                        "scoreDisplayMode": "opportunity",
+                        "score": 0.4,
+                        "displayValue": "Potential savings of 450 ms",
+                        "details": {"overallSavingsMs": 450},
+                    },
+                },
+            },
+        }, "mobile")
+        self.assertEqual(result["scores"]["performance"], 72)
+        self.assertEqual(result["scores"]["seo"], 91)
+        self.assertEqual(result["field"]["lcp"]["display_value"], "2.8s")
+        self.assertEqual(result["field"]["cls"]["value"], 0.04)
+        self.assertEqual(result["lab"]["lcp"]["display_value"], "3.1 s")
+        self.assertEqual(result["opportunities"][0]["savings_ms"], 450)
+        compact = compact_core_web_vitals({"status": "ok", "strategies": {"mobile": result}})
+        self.assertNotIn("opportunities", compact["strategies"]["mobile"])
+        self.assertEqual(compact["strategies"]["mobile"]["lab"]["lcp"]["value"], 3100)
+
+    def test_property_url_and_header_compaction(self):
+        self.assertEqual(property_home_url("sc-domain:example.com"), "https://example.com/")
+        self.assertEqual(property_home_url("https://example.com/path/page"), "https://example.com/path/")
+        compact = compact_http_headers({
+            "status": "ok", "checked_at": "now", "requested_url": "https://example.com/",
+            "final_url": "https://example.com/", "status_code": 200, "http_version": "HTTP/2",
+            "headers": {"content-type": "text/html", "cache-control": "max-age=0"},
+            "redirects": [],
+        })
+        self.assertEqual(compact["headers"]["content-type"], "text/html")
+
+    async def test_source_rendering_snapshot_is_compact(self):
+        html = b"""<html><head><title>Rendered</title><script id="__NEXT_DATA__">{}</script></head>
+        <body><main><h1>Hello</h1><p>""" + (b"copy " * 250) + b"""</p><a href="/x">x</a></main></body></html>"""
+        with patch("tools.source_html_tool._fetch_limited_source", AsyncMock(return_value={
+            "url": "https://example.com/",
+            "status_code": 200,
+            "headers": httpx.Headers({"content-type": "text/html"}),
+            "body": html,
+            "truncated": False,
+            "redirects": [],
+        })):
+            result = await fetch_source_rendering_snapshot("https://example.com/")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["rendering_strategy"], "server-rendered-or-prerendered")
+        self.assertIn("nextjs", result["framework_hints"])
+        self.assertNotIn("body", result)
+
+    def test_search_console_domain_property_covers_url_prefix_request(self):
+        sites = {"siteEntry": [
+            {"siteUrl": "sc-domain:zocialplug.com", "permissionLevel": "siteOwner"},
+            {"siteUrl": "https://unverified.example/", "permissionLevel": "siteUnverifiedUser"},
+        ]}
+        self.assertTrue(property_covers_request("sc-domain:zocialplug.com", "https://www.zocialplug.com/"))
+        self.assertFalse(property_covers_request("sc-domain:zocialplug.com", "https://zocialplug.com.attacker.test/"))
+        self.assertEqual(verified_property_match(sites, "https://www.zocialplug.com/"), "sc-domain:zocialplug.com")
+
 
 class ScraperTests(unittest.IsolatedAsyncioTestCase):
     def test_scope_checks_do_not_accept_similar_hosts(self):
         self.assertTrue(belongs_to_property("https://blog.example.com/page", "sc-domain:example.com"))
         self.assertFalse(belongs_to_property("https://example.com.attacker.test/", "sc-domain:example.com"))
         self.assertFalse(belongs_to_property("https://example.com/private", "https://example.com/public/"))
+        self.assertTrue(belongs_to_property("https://example.com", "https://example.com/"))
         self.assertFalse(belongs_to_property("file:///etc/passwd", "sc-domain:example.com"))
         self.assertFalse(belongs_to_property("https://[invalid", "sc-domain:example.com"))
 

@@ -11,12 +11,14 @@ SKILL_PATH = Path(__file__).resolve().parents[2] / "system-prompt" / "SKILL.md"
 
 CONTRACT = """Return only JSON: {"report": "Markdown findings, changes, limitations and next steps", "summary": "factual history", "tasks": []}.
 Tasks must use one of the nine core stage slugs supplied in the framework context. The extra lenses (local-seo, ecommerce, international-seo, internal-linking, competitor-analysis and competitor-research) are topics inside those stages, not additional stages.
-Each task has stage, title, priority (critical/high/medium/quick-win), scope (one exact URL or property), evidence, why_it_matters, manual_fix, agent_prompt and subtasks (1-5 strings).
-Optional existing_task_id references an issue already in saved context.
-Optional verification is null or {"field": "title|meta_description|canonical|h1|noindex|viewport|status_code", "expected": "exact expected value"}; pick ONE field, not the pipe-separated list. Only supply this for an observable unmet condition at the exact scope URL. Broader recommendations need manual verification.
+Each task must include stage, title, priority (critical/high/medium/quick-win), scope (one exact URL or property), evidence, why_it_matters, manual_fix, agent_prompt, subtasks (1-5 strings), existing_task_id and verification.
+Set existing_task_id to null for new tasks; only use a saved task id when the task updates an issue already in saved context.
+Set verification to null for broader recommendations. Otherwise verification is {"field": "title|meta_description|canonical|h1|noindex|viewport|status_code", "expected": "exact expected value"}; pick ONE field, not the pipe-separated list. Only supply this for an observable unmet condition at the exact scope URL.
 Never all 9 stages in one turn. Use only the assigned bundle until the framework is covered.
 Use at most 4 tasks and 500 report words. Do not generate dates, completion, status or verification-action fields; the server owns those. Cite only supplied evidence and disclose omitted samples. During the visibility-opportunities or change-review phase, review saved changes/results and choose a relevant core stage without reopening the sequence. Empty tasks are valid only when the evidence supports no new action or all useful actions are already saved.
 Only supply verification for an observable unmet condition at the exact scope URL.
+Use Core Web Vitals and HTTP headers as supporting evidence only. Do not invent Lighthouse issues beyond supplied compact metrics and headers.
+Use source_rendering only to reason about whether the page appears server-rendered, prerendered, mixed, or client-rendered. It is compact source-HTML metadata, not full browser rendering or full source HTML.
 """
 
 
@@ -85,10 +87,17 @@ def build_prompt(context: dict, max_chars: int) -> str:
 
     # Whole records are removed, never half a URL, JSON object or instruction.
     groups = ["previous_reports", "queries", "pages", "competitors", "saved_tasks", "reviews"]
+    optional_context = ["source_rendering", "http_headers", "core_web_vitals"]
     while len(render()) > max_chars:
         candidates = [key for key in groups if data.get(key)]
         if not candidates:
-            raise ValueError("The configured SEO prompt budget cannot hold the skill and request context.")
+            removable_context = [key for key in optional_context if data.get(key)]
+            if not removable_context:
+                raise ValueError("The configured SEO prompt budget cannot hold the skill and request context.")
+            key = removable_context[0]
+            data[key] = None
+            data["budget_omissions"][key] = 1
+            continue
         # Keep one representative record from each source whenever possible.
         removable = [key for key in candidates if len(data[key]) > 1] or candidates
         key = max(removable, key=lambda item: len(json.dumps(data[item])))

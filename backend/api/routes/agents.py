@@ -14,7 +14,7 @@ from db.dbconfig import AsyncSessionLocal, get_db
 from dependencies.auth import authenticate
 from schemas.seo import AnalysisRequest
 from services.oauth_service import OAuthService
-from services.search_console_service import SearchConsoleService
+from services.search_console_service import SearchConsoleService, verified_property_match
 from services.seo_workspace_service import SEOWorkspaceService
 
 logger = logging.getLogger(__name__)
@@ -29,8 +29,8 @@ async def weekly_agent(request: Request, body: AnalysisRequest,
     if account is None:
         raise HTTPException(403, "Reconnect your Google account.")
     sites = await SearchConsoleService().list_sites(account.access_token)
-    if not any(site.get("siteUrl") == body.site_url and site.get("permissionLevel") != "siteUnverifiedUser"
-               for site in sites.get("siteEntry", [])):
+    search_console_site_url = verified_property_match(sites, body.site_url)
+    if not search_console_site_url:
         raise HTTPException(403, "This property is not available in your Search Console account.")
 
     run = await SEOWorkspaceService(db).reserve_run(user_id, body)
@@ -47,6 +47,7 @@ async def weekly_agent(request: Request, body: AnalysisRequest,
                         user_id=str(user_id), run_id=run_id,
                         stages=run.stages,
                         phase=(run.preferences or {}).get("phase", "framework"),
+                        search_console_site_url=search_console_site_url,
                         **body.model_dump(),
                     ):
                         if isinstance(chunk, dict):

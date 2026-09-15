@@ -25,7 +25,7 @@ class GoogleOAuthService:
     SCOPES = [
         "openid",
         "email",
-        "https://www.googleapis.com/auth/webmasters.readonly",
+        "https://www.googleapis.com/auth/webmasters",
     ]
 
 
