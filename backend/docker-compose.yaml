@@ -21,6 +21,9 @@ services:
       timeout: 5s
       retries: 5
 
+    networks:
+      - seo-agent-network
+
   adminer:
     image: adminer
     container_name: adminer
@@ -32,6 +35,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+    networks:
+      - seo-agent-network
 
   redis:
     image: redis:7
@@ -49,6 +55,44 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+    networks:
+      - seo-agent-network
+
+  backend:
+    image: seo-agent-backend:local
+    container_name: seo-agent-backend
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - seo-agent-network
+
+    command:
+      - python
+      - -m
+      - uvicorn
+      - main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+
+networks:
+  seo-agent-network:
+    name: seo-agent-network
+    driver: bridge
 
 volumes:
   postgres_data:
