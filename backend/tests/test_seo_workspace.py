@@ -21,7 +21,7 @@ from core.config import settings
 from models.seo_report import SEOReport
 from models.seo_task import SEOTask
 from models.user import User
-from schemas.seo import AnalysisDraft, AnalysisRequest, next_stages, STAGES
+from schemas.seo import AnalysisDraft, AnalysisRequest, CORE_STAGES
 from services.seo_workspace_service import SEOWorkspaceService
 
 
@@ -46,13 +46,17 @@ def draft(stage="technical-foundation", summary=""):
 
 
 class SchemaTests(unittest.TestCase):
-    def test_stage_progression_respects_group_and_size(self):
-        self.assertEqual(next_stages(set(), "1-10"), STAGES[:4])
-        self.assertEqual(next_stages(set(), "11-30"), STAGES[:3])
-        self.assertEqual(next_stages(set(STAGES[:3]), "11-30"), ["indexability"])
-        self.assertEqual(next_stages(set(STAGES[:4]), "1-10"), STAGES[4:6])
-        self.assertEqual(next_stages(set(), "301+"), STAGES[:1])
-        self.assertEqual(next_stages(set(STAGES), "1-10"), [])
+    def test_tasks_use_the_nine_core_stages(self):
+        self.assertEqual(CORE_STAGES, [
+            "technical-foundation", "crawlability", "rendering", "indexability",
+            "on-page", "content", "search-intent", "semantic-seo", "ai-geo",
+        ])
+        with self.assertRaises(ValidationError):
+            draft("local-seo")
+        with self.assertRaises(ValidationError):
+            draft("Invalid category!")
+        with self.assertRaises(ValidationError):
+            AnalysisRequest(**request().model_dump(exclude={"competitor_urls"}), competitor_urls=["file:///etc/passwd"])
 
     def test_invalid_model_output_does_not_become_a_report(self):
         from agents.weekly_agent import WeeklyAgent
@@ -115,7 +119,7 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(workspace["latest_report"]["summary"], "")
         self.assertEqual(workspace["tasks"][0]["id"], str(task.id))
         self.assertEqual(workspace["pending_count"], 1)
-        self.assertFalse(workspace["can_analyze"])
+        self.assertTrue(workspace["can_analyze"])
 
     async def test_completion_subtasks_reopen_and_idempotence(self):
         run, task = await self.saved_task()
@@ -130,15 +134,142 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(result["subtasks"][1]["completed_at"])
         await self.service.set_completion(self.user, task.id, True)
         next_run = await self.service.reserve_run(self.user, request())
-        self.assertEqual(next_run.stages, STAGES[4:6])
+        self.assertEqual(next_run.stages, CORE_STAGES[1:5])
         await self.service.fail_run(next_run.id)
         self.assertEqual((await self.service.workspace(self.user, request().site_url))["latest_report"]["id"], str(run.id))
 
-    async def test_pending_tasks_block_new_analysis(self):
+    async def test_pending_tasks_allow_new_analysis_and_duplicates_reuse_existing_work(self):
         await self.saved_task()
-        with self.assertRaises(HTTPException) as error:
-            await self.service.reserve_run(self.user, request())
-        self.assertEqual(error.exception.status_code, 409)
+        run = await self.service.reserve_run(self.user, request())
+        await self.service.finish_run(run.id, draft())
+        self.assertEqual(len(await self.service.get_tasks(self.user, request().site_url)), 1)
+
+    async def test_reviews_persist_without_changing_completion_and_reopen_resets_check(self):
+        original, task = await self.saved_task()
+        completed = await self.service.set_completion(self.user, task.id, True)
+        run = await self.service.reserve_run(self.user, request())
+        review = {"task_id": str(task.id), "title": task.title, "status": "not_observed",
+                  "checked_at": datetime.now(timezone.utc).isoformat(), "detail": "Viewport is still absent."}
+        await self.service.finish_run(run.id, draft(), {"reviews": [review], "pages": []})
+        async with self.sessions() as another:
+            workspace = await SEOWorkspaceService(another).workspace(self.user, request().site_url)
+        self.assertEqual(len(workspace["tasks"]), 1)
+        self.assertEqual(workspace["tasks"][0]["completed_at"], completed["completed_at"])
+        self.assertEqual(workspace["tasks"][0]["review"]["status"], "not_observed")
+        self.assertEqual(workspace["latest_report"]["evidence"]["reviews"], [review])
+        self.assertEqual(original.evidence, {})
+        await self.service.set_completion(self.user, task.id, False)
+        self.assertEqual(task.review, {})
+        self.assertEqual(run.evidence["reviews"], [review])
+
+    async def test_foreign_review_cannot_be_saved(self):
+        _, foreign = await self.saved_task("sc-domain:other.test")
+        run = await self.service.reserve_run(self.user, request())
+        with self.assertRaises(ValueError):
+            await self.service.finish_run(run.id, draft(), {"reviews": [{"task_id": str(foreign.id)}]})
+        await self.service.fail_run(run.id)
+
+    async def test_core_stage_and_verification_survive_database_reload(self):
+        payload = draft("technical-foundation").model_dump()
+        payload["tasks"][0]["verification"] = {"field": "viewport", "expected": "width=device-width"}
+        run = await self.service.reserve_run(self.user, request())
+        await self.service.finish_run(run.id, AnalysisDraft.model_validate(payload), {"pages": [{"url": payload["tasks"][0]["scope"], "viewport": ""}]})
+        async with self.sessions() as another:
+            tasks = await SEOWorkspaceService(another).get_tasks(self.user, request().site_url)
+        self.assertEqual(tasks[0].stage, "technical-foundation")
+        self.assertEqual(tasks[0].verification["field"], "viewport")
+
+    async def test_already_matching_check_does_not_create_repair_task(self):
+        payload = draft().model_dump()
+        payload["tasks"][0]["verification"] = {"field": "viewport", "expected": "width=device-width"}
+        run = await self.service.reserve_run(self.user, request())
+        await self.service.finish_run(run.id, AnalysisDraft.model_validate(payload), {"pages": [{"url": payload["tasks"][0]["scope"], "viewport": "width=device-width"}]})
+        self.assertEqual(await self.service.get_tasks(self.user, request().site_url), [])
+
+    async def test_real_agent_orchestration_with_mocked_network_and_model(self):
+        import agents.weekly_agent as module
+        from services.seo_review_service import SEOReviewService
+        from services.scraper_service import ScraperService
+        _, task = await self.saved_task()
+        run = await self.service.reserve_run(self.user, request())
+        run_id = run.id
+        agent = module.WeeklyAgent.__new__(module.WeeklyAgent)
+        agent.db = self.db
+        agent.workspace_service = self.service
+        agent.user_tool = AsyncMock(return_value={"access_token": "test-token"})
+        agent.scraper = ScraperService()
+        agent.scraper.scrape_from_sitemap = AsyncMock(return_value=[{"url": task.scope, "title": "Original"}])
+        agent.scraper.scrape_page = AsyncMock(return_value={"url": "https://competitor.test/", "title": "Competitor"})
+        search = AsyncMock()
+        search.query_pages.return_value = {"rows": []}
+        agent.reviewer = SEOReviewService(search)
+        agent.model = None
+        output = AsyncMock(return_value=AnalysisDraft(report="Reviewed saved work.", tasks=[]).model_dump_json())
+        with patch.object(module, "collect_search_console_data", AsyncMock(return_value={})), \
+             patch.object(module, "Agent", return_value=SimpleNamespace(invoke_async=output)):
+            events = [event async for event in agent.run(user_id=str(self.user), run_id=run_id,
+                      **request().model_dump(exclude={"competitor_urls"}), competitor_urls=["https://competitor.test/"])]
+        self.assertEqual(events[-1], "Completed.")
+        self.assertIn(task.scope, agent.scraper.scrape_from_sitemap.await_args.kwargs["priority_urls"])
+        self.assertNotIn("test-token", output.await_args.args[0])
+        workspace = await self.service.workspace(self.user, request().site_url)
+        self.assertEqual(workspace["latest_report"]["evidence"]["reviews"][0]["status"], "manual_review")
+        self.assertEqual(len(workspace["latest_report"]["evidence"]["competitors"]), 1)
+
+    async def test_repeated_invalid_model_output_streams_error_and_preserves_saved_work(self):
+        import agents.weekly_agent as module
+        import api.routes.agents as routes
+        from db.dbconfig import get_db
+        from dependencies.auth import authenticate
+        from services.seo_review_service import SEOReviewService
+
+        _, task = await self.saved_task()
+        await self.service.set_completion(self.user, task.id, True)
+        before = await self.service.workspace(self.user, request().site_url)
+        output = AsyncMock(side_effect=['{"report": "bad "quotes""}', '{"report":"text", "tasks":{}}'])
+
+        def real_agent(db):
+            agent = module.WeeklyAgent.__new__(module.WeeklyAgent)
+            agent.db = db
+            agent.workspace_service = SEOWorkspaceService(db)
+            agent.user_tool = AsyncMock(return_value={"access_token": "test-token"})
+            agent.scraper = SimpleNamespace(scrape_from_sitemap=AsyncMock(return_value=[]))
+            search = AsyncMock()
+            search.query_pages.return_value = {"rows": []}
+            agent.reviewer = SEOReviewService(search)
+            agent.model = None
+            return agent
+
+        async def db_dependency():
+            async with self.sessions() as db:
+                yield db
+
+        app = FastAPI()
+        app.include_router(routes.router)
+        app.dependency_overrides[get_db] = db_dependency
+        app.dependency_overrides[authenticate] = lambda: {"sub": str(self.user)}
+        with patch.object(routes, "AsyncSessionLocal", self.sessions), \
+             patch.object(routes, "WeeklyAgent", side_effect=real_agent), \
+             patch.object(routes.OAuthService, "get_valid_google_account", AsyncMock(return_value=SimpleNamespace(access_token="test-token"))), \
+             patch.object(routes.SearchConsoleService, "list_sites", AsyncMock(return_value={"siteEntry": [{"siteUrl": request().site_url, "permissionLevel": "siteOwner"}]})), \
+             patch.object(module, "collect_search_console_data", AsyncMock(return_value={})), \
+             patch.object(module, "Agent", return_value=SimpleNamespace(invoke_async=output)):
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.post("/agent/weekly", json=request().model_dump() | {"mode": "review"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('"code": "invalid_analysis_output"', response.text)
+        self.assertIn("after one formatting retry", response.text)
+        self.assertNotIn('"type": "completed"', response.text)
+        self.assertNotIn('"type": "result"', response.text)
+        self.assertEqual(output.await_count, 2)
+        async with self.sessions() as another:
+            after = await SEOWorkspaceService(another).workspace(self.user, request().site_url)
+            failed = await another.scalar(select(func.count()).select_from(SEOReport).where(
+                SEOReport.user_id == self.user, SEOReport.status == "failed"))
+        self.assertEqual(after["latest_report"], before["latest_report"])
+        self.assertEqual(after["tasks"], before["tasks"])
+        self.assertTrue(after["can_analyze"])
+        self.assertEqual(failed, 1)
 
     async def test_tasks_and_history_are_scoped_to_user_and_exact_property(self):
         _, task = await self.saved_task()
@@ -150,8 +281,10 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_failed_validation_leaves_no_tasks_or_completed_report(self):
         run = await self.service.reserve_run(self.user, request())
+        invalid = draft("ai-geo")
+        invalid.tasks[0].existing_task_id = str(uuid4())
         with self.assertRaises(ValueError):
-            await self.service.finish_run(run.id, draft("ai-geo"))
+            await self.service.finish_run(run.id, invalid)
         await self.service.fail_run(run.id)
         workspace = await self.service.workspace(self.user, request().site_url)
         self.assertIsNone(workspace["latest_report"])
@@ -186,20 +319,22 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
         await self.db.commit()
         replacement = await self.service.reserve_run(self.user, request())
         self.assertNotEqual(run.id, replacement.id)
-        self.assertEqual(replacement.stages, STAGES[:4])
+        self.assertEqual(replacement.stages, [])
         with self.assertRaises(ValueError):
             await self.service.finish_run(run.id, draft())
 
-    async def test_no_finding_batch_advances_and_full_framework_stops(self):
-        for expected in (STAGES[:4], STAGES[4:6], STAGES[6:8], STAGES[8:]):
+    async def test_no_final_stage_and_empty_findings_are_valid(self):
+        for stage in CORE_STAGES:
             run = await self.service.reserve_run(self.user, request())
-            self.assertEqual(run.stages, expected)
-            await self.service.finish_run(run.id, AnalysisDraft(report="No supported findings in this sample.", tasks=[]))
+            await self.service.finish_run(run.id, draft(stage))
+        run = await self.service.reserve_run(self.user, request())
+        await self.service.finish_run(run.id, AnalysisDraft(report="No supported new findings.", tasks=[]))
         workspace = await self.service.workspace(self.user, request().site_url)
         self.assertEqual(len(workspace["covered_stages"]), 9)
-        self.assertFalse(workspace["can_analyze"])
-        with self.assertRaises(HTTPException):
-            await self.service.reserve_run(self.user, request())
+        self.assertTrue(workspace["can_analyze"])
+        opportunity_run = await self.service.reserve_run(self.user, request())
+        self.assertEqual(opportunity_run.stages, [])
+        self.assertEqual(opportunity_run.preferences["phase"], "visibility-opportunities")
 
     async def test_http_history_task_updates_and_ownership(self):
         from api.routes.seo import router
@@ -263,8 +398,8 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn('"type": "completed"', response.text)
                 self.assertNotIn('"type": "error"', response.text)
                 self.assertTrue(response.headers["content-type"].startswith("text/event-stream"))
-                blocked = await client.post("/agent/weekly", json=request().model_dump())
-                self.assertEqual(blocked.status_code, 409)
+                repeated = await client.post("/agent/weekly", json=request().model_dump())
+                self.assertEqual(repeated.status_code, 200)
                 denied = await client.post("/agent/weekly", json=request("https://not-owned.test/").model_dump())
                 self.assertEqual(denied.status_code, 403)
         self.assertEqual(len(await self.service.get_tasks(self.user, request().site_url)), 1)

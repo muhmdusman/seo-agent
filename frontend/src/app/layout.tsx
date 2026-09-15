@@ -16,13 +16,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Search Console Agent | AI-Powered SEO Analysis",
+    default: "Search Console Agent | SEO review & fixes",
     template: "%s | Search Console Agent",
   },
   description:
     "AI-powered weekly SEO recommendations built from your Google Search Console performance data and on-page content. Tailored insights for your business goals.",
   applicationName: "Search Console Agent",
-  keywords: ["SEO", "Search Console", "Google", "Analytics", "AI", "SEO Analysis", "Website Optimization"],
+  keywords: ["SEO", "Search Console", "Google", "Analytics", "AI", "SEO review", "Website Optimization"],
   authors: [{ name: "Search Console Agent" }],
   creator: "Search Console Agent",
   icons: {
@@ -41,14 +41,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    title: "Search Console Agent | AI-Powered SEO Analysis",
+    title: "Search Console Agent | SEO review & fixes",
     description: "AI-powered weekly SEO recommendations tailored to your business goals",
     siteName: "Search Console Agent",
   },
   twitter: {
     card: "summary_large_image",
     title: "Search Console Agent",
-    description: "AI-powered SEO analysis from your Search Console data",
+    description: "Evidence-backed SEO reviews, fixes and visibility opportunities from your Search Console data",
   },
 };
 

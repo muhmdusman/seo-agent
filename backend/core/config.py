@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     # cost of analysis depth. Set to false once the provider account has a
     # higher rate limit.
     SEO_DEMO_MODE: bool = Field(default=True)
+    # Optional override for the local prompt-size guard; provider token quotas vary.
+    SEO_PROMPT_CHAR_BUDGET: int = Field(default=0, ge=0, le=100000)
 
     # ------------------------------------------------------------------
     # LLM provider

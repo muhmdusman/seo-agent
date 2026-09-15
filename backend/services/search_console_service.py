@@ -14,6 +14,21 @@ class SearchConsoleService:
 
     BASE_URL = "https://searchconsole.googleapis.com/webmasters/v3"
 
+    async def page_performance(self, access_token: str, site_url: str, page_url: str,
+                               start_date: date, end_date: date):
+        async with httpx.AsyncClient(timeout=12) as client:
+            response = await client.post(
+                f"{self.BASE_URL}/sites/{quote(site_url, safe='')}/searchAnalytics/query",
+                headers=self._headers(access_token),
+                json={"startDate": start_date.isoformat(), "endDate": end_date.isoformat(),
+                      "dimensions": ["date"], "type": "web", "dataState": "final", "rowLimit": 32,
+                      "dimensionFilterGroups": [{"filters": [
+                          {"dimension": "page", "operator": "equals", "expression": page_url},
+                      ]}]},
+            )
+            response.raise_for_status()
+            return response.json()
+
     def _headers(
         self,
         access_token: str,
@@ -271,3 +286,7 @@ class SearchConsoleService:
             "daily_performance": daily,
             "sitemaps": sitemaps,
         }
+
+    async def query_pages(self, access_token, site_url, start_date, end_date):
+        async with httpx.AsyncClient(timeout=12) as client:
+            return await self._query(client, access_token, site_url, start_date, end_date, ["query", "page"], row_limit=50)

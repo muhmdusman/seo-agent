@@ -5,9 +5,10 @@ import { AlertCircle, LoaderCircle, Play, RefreshCw } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/config';
 import { analysisEvents } from '@/lib/seo-stream';
-import { STAGE_LABELS, type ReportHistory, type SEOReport, type SEOTask, type SEOWorkspace } from '@/lib/seo-types';
+import { ANALYSIS_MODE_LABELS, stageLabel, type AnalysisMode, type ReportHistory, type SEOReport, type SEOTask, type SEOWorkspace } from '@/lib/seo-types';
 import { AnalysisDisplay } from '@/components/analysis-display';
 import { SEOTaskList } from '@/components/seo-task-list';
+import { SEOReviewSummary } from '@/components/seo-review-summary';
 
 const control = 'min-h-10 w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-emerald-600';
 
@@ -18,6 +19,10 @@ export function SEOWorkspaceView({ siteUrl }: { siteUrl: string }) {
   const [size, setSize] = useState('');
   const [type, setType] = useState('');
   const [goal, setGoal] = useState('');
+  const [mode, setMode] = useState<AnalysisMode>('auto');
+  const [focus, setFocus] = useState('');
+  const [competitors, setCompetitors] = useState('');
+  const [competitorError, setCompetitorError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -41,6 +46,9 @@ export function SEOWorkspaceView({ siteUrl }: { siteUrl: string }) {
       setSize(preferences?.website_number_of_pages ?? '');
       setType(preferences?.website_type ?? '');
       setGoal(preferences?.user_goal ?? '');
+      setMode(preferences?.mode ?? 'auto');
+      setFocus(preferences?.focus ?? '');
+      setCompetitors(preferences?.competitor_urls?.join('\n') ?? '');
     }
   }, [siteQuery]);
 
@@ -86,8 +94,7 @@ export function SEOWorkspaceView({ siteUrl }: { siteUrl: string }) {
         if (!current) return current;
         const tasks = current.tasks.map(item => item.id === updated.id ? updated : item);
         const pending = tasks.filter(item => !item.completed_at).length;
-        return { ...current, tasks, pending_count: pending,
-          can_analyze: pending === 0 && !current.running && current.covered_stages.length < 9 };
+        return { ...current, tasks, pending_count: pending };
       });
     } catch (err) {
       if (mounted.current) setError(err instanceof Error ? err.message : 'Task could not be saved.');
@@ -98,22 +105,37 @@ export function SEOWorkspaceView({ siteUrl }: { siteUrl: string }) {
 
   async function startAnalysis(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (analyzing || !workspace?.can_analyze) return;
+    if (analyzing || saving || workspace?.running || !workspace?.can_analyze) return;
+    const competitorUrls = competitors.split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+    const invalidUrl = competitorUrls.some(value => {
+      try {
+        const url = new URL(value);
+        return !/^https?:\/\//i.test(value) || !['http:', 'https:'].includes(url.protocol) || !url.hostname;
+      } catch { return true; }
+    });
+    if (competitorUrls.length > 3 || invalidUrl) {
+      setCompetitorError(competitorUrls.length > 3 ? 'Enter at most 3 competitor URLs.' : 'Enter a full HTTP or HTTPS URL on each line.');
+      return;
+    }
+    setCompetitorError('');
     setAnalyzing(true);
     setError('');
-    setStatus('Starting analysis...');
+    setStatus('Starting SEO review...');
     const abort = new AbortController();
     controller.current = abort;
     try {
       const response = await fetch(`${API_BASE_URL}/agent/weekly`, {
         method: 'POST', credentials: 'include', cache: 'no-store', signal: abort.signal,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ site_url: siteUrl, website_number_of_pages: size, website_type: type, user_goal: goal }),
+        body: JSON.stringify({
+          site_url: siteUrl, website_number_of_pages: size, website_type: type, user_goal: goal,
+          mode, focus: focus.trim(), competitor_urls: competitorUrls,
+        }),
       });
       if (response.status === 401) { window.location.assign('/'); return; }
       if (!response.ok || !response.body) {
         const body = await response.json().catch(() => null);
-        throw new Error(typeof body?.detail === 'string' ? body.detail : 'Could not start analysis.');
+        throw new Error(typeof body?.detail === 'string' ? body.detail : 'Could not start the review.');
       }
       let completed = false;
       for await (const message of analysisEvents(response.body)) {
@@ -123,7 +145,7 @@ export function SEOWorkspaceView({ siteUrl }: { siteUrl: string }) {
       }
       if (!completed) throw new Error('The connection ended early. Checking for saved results.');
     } catch (err) {
-      if (!abort.signal.aborted) setError(err instanceof Error ? err.message : 'Analysis failed.');
+      if (!abort.signal.aborted) setError(err instanceof Error ? err.message : 'Review failed.');
     } finally {
       if (mounted.current) {
         await loadWorkspace(abort.signal).catch(() => {
@@ -151,11 +173,26 @@ export function SEOWorkspaceView({ siteUrl }: { siteUrl: string }) {
     {loading ? <p role="status" className="py-10 text-sm text-zinc-500">Loading saved work...</p> : !workspace ?
       <button onClick={() => window.location.reload()} className="flex items-center gap-2 text-sm text-emerald-800"><RefreshCw className="h-4 w-4" />Retry</button> : <>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-zinc-200 pb-4 text-xs text-zinc-500">
-        <span>{workspace.covered_stages.length} / 9 stages analyzed</span>
+        <span>{workspace.covered_stages.length} areas with findings</span>
         <span>{workspace.pending_count} open tasks</span>
-        {workspace.latest_report && <span>Last analysis {new Date(workspace.latest_report.created_at).toLocaleString()}</span>}
+        <span>{workspace.framework_complete ? '9-stage framework complete · ongoing reviews and opportunities available' : `Next framework stages: ${workspace.next_stages.map(stageLabel).join(' / ')}`}</span>
+        {workspace.latest_report && <span>Last review {new Date(workspace.latest_report.created_at).toLocaleString()}</span>}
+        {workspace.next_review_at && <span>Suggested next review {new Date(workspace.next_review_at).toLocaleString()}</span>}
       </div>
-      {workspace.can_analyze && !busy && <form onSubmit={startAnalysis} className="space-y-3">
+      <form onSubmit={startAnalysis}>
+        <fieldset disabled={busy || saving} className="min-w-0 space-y-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="min-w-0 flex-1 space-y-1 text-xs text-zinc-600 sm:max-w-xs"><span>Review type</span>
+            <select className={control} value={mode} onChange={event => setMode(event.target.value as AnalysisMode)}>
+              <option value="auto">{ANALYSIS_MODE_LABELS.auto}</option>
+              <option value="review">{ANALYSIS_MODE_LABELS.review}</option>
+              <option value="growth">{ANALYSIS_MODE_LABELS.growth}</option>
+            </select>
+          </label>
+          <button disabled={!workspace.can_analyze || busy || saving} className="flex min-h-10 items-center gap-2 rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"><Play className="h-4 w-4" />{workspace.latest_report ? 'Run SEO review' : 'Start SEO review'}</button>
+        </div>
+        <details open={!workspace.latest_report?.preferences?.website_number_of_pages || !workspace.latest_report?.preferences?.website_type || !workspace.latest_report?.preferences?.user_goal} className="space-y-3">
+          <summary className="cursor-pointer text-xs font-medium text-zinc-600">Review settings</summary>
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="min-w-0 space-y-1 text-xs text-zinc-600"><span>Website size</span>
             <select required className={control} value={size} onChange={event => setSize(event.target.value)}>
@@ -172,11 +209,23 @@ export function SEOWorkspaceView({ siteUrl }: { siteUrl: string }) {
             <input required maxLength={500} className={control} value={goal} onChange={event => setGoal(event.target.value)} placeholder="Increase organic traffic" />
           </label>
         </div>
-        <button disabled={saving} className="flex min-h-10 items-center gap-2 rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"><Play className="h-4 w-4" />{workspace.covered_stages.length ? 'Analyze next stages' : 'Start analysis'}</button>
-      </form>}
-      {busy && <p role="status" className="flex items-center gap-2 text-sm text-emerald-800"><LoaderCircle className="h-4 w-4 animate-spin" />{status || 'Analysis in progress...'}</p>}
-      {workspace.covered_stages.length === 9 && workspace.pending_count === 0 && <p className="text-sm text-emerald-800">All nine stages and their tasks are complete.</p>}
-      {!workspace.latest_report && !busy && <p className="text-sm text-zinc-500">No saved analysis for this property.</p>}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="min-w-0 space-y-1 text-xs text-zinc-600 sm:col-span-2"><span>Focus (optional)</span>
+            <input maxLength={500} className={control} value={focus} onChange={event => setFocus(event.target.value)} />
+          </label>
+          <label className="min-w-0 space-y-1 text-xs text-zinc-600 sm:col-span-2"><span>Competitor URLs (optional, up to 3)</span>
+            <textarea rows={3} className={`${control} resize-y`} value={competitors}
+              aria-invalid={!!competitorError} aria-describedby={competitorError ? 'competitor-urls-error' : undefined}
+              onChange={event => { setCompetitors(event.target.value); setCompetitorError(''); }}
+              placeholder={'https://competitor.example.com\nhttps://another.example.com'} />
+          </label>
+        </div>
+        </details>
+        {competitorError && <p id="competitor-urls-error" role="alert" className="text-sm text-red-700">{competitorError}</p>}
+        </fieldset>
+      </form>
+      {busy && <p role="status" className="flex items-center gap-2 text-sm text-emerald-800"><LoaderCircle className="h-4 w-4 animate-spin" />{status || 'Review in progress...'}</p>}
+      {!workspace.latest_report && !busy && <p className="text-sm text-zinc-500">No saved review for this property.</p>}
       {workspace.latest_report && <div className="grid min-w-0 items-start gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
         <section className="min-w-0 space-y-5">
           <div className="flex flex-wrap items-end gap-2">
@@ -189,7 +238,8 @@ export function SEOWorkspaceView({ siteUrl }: { siteUrl: string }) {
             {history.next_offset !== null && <button disabled={saving} onClick={() => void loadOlder()} className="min-h-10 text-xs font-medium text-emerald-800">Older reports</button>}
           </div>
           {selectedReport && <>
-            {selectedReport.stages.length > 0 && <p className="text-xs text-zinc-500">{selectedReport.stages.map(stage => STAGE_LABELS[stage]).join(' / ')}</p>}
+            {selectedReport.stages.length > 0 && <p className="text-xs text-zinc-500">{selectedReport.stages.map(stageLabel).join(' / ')}</p>}
+            <SEOReviewSummary report={selectedReport} />
             <AnalysisDisplay siteUrl={siteUrl} analysis={selectedReport.report} />
           </>}
         </section>

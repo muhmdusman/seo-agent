@@ -34,7 +34,7 @@ async def weekly_agent(request: Request, body: AnalysisRequest,
         raise HTTPException(403, "This property is not available in your Search Console account.")
 
     run = await SEOWorkspaceService(db).reserve_run(user_id, body)
-    run_id, stages = run.id, run.stages
+    run_id = run.id
 
     async def stream():
         # The reservation is committed; slow external work owns a fresh session.
@@ -44,7 +44,9 @@ async def weekly_agent(request: Request, body: AnalysisRequest,
                 async with asyncio.timeout(240):
                     agent = WeeklyAgent(stream_db)
                     async for chunk in agent.run(
-                        user_id=str(user_id), run_id=run_id, stages=stages,
+                        user_id=str(user_id), run_id=run_id,
+                        stages=run.stages,
+                        phase=(run.preferences or {}).get("phase", "framework"),
                         **body.model_dump(),
                     ):
                         if isinstance(chunk, dict):
@@ -52,7 +54,7 @@ async def weekly_agent(request: Request, body: AnalysisRequest,
                         elif chunk == STATUS_COMPLETED:
                             event = {"type": "completed", "message": chunk}
                         elif chunk == STATUS_FAILED:
-                            event = {"type": "error", "message": "Analysis failed. Your saved report and tasks are unchanged."}
+                            event = {"type": "error", "message": "Review failed. Your saved report and tasks are unchanged."}
                         else:
                             event = {"type": "status", "message": chunk}
                         yield f"data: {json.dumps(event)}\n\n"
@@ -60,7 +62,7 @@ async def weekly_agent(request: Request, body: AnalysisRequest,
                 raise
             except Exception:
                 logger.exception("Weekly agent stream failed")
-                yield f"data: {json.dumps({'type': 'error', 'message': 'Analysis stopped. Your saved work is unchanged.'})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Review stopped. Your saved work is unchanged.'})}\n\n"
             finally:
                 # A killed process is recovered by the reservation TTL.
                 # This conditional update leaves successful runs intact.

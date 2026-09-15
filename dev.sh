@@ -187,7 +187,7 @@ fi
 step "Starting Next.js frontend"
 
 if [ ! -f "$ROOT_DIR/frontend/.env.local" ]; then
-    printf 'NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1\n' \
+    printf 'BACKEND_API_URL=http://localhost:8000/api/v1\n' \
         > "$ROOT_DIR/frontend/.env.local"
     ok "created frontend/.env.local"
 fi
