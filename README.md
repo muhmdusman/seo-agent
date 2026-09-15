@@ -252,7 +252,6 @@ The documented deployment uses AWS Amplify, an Amazon API Gateway entry point, A
 
 The request path is **Website owner → Amplify dashboard → API Gateway → FastAPI / Strands runtime**. Results return through the API to the dashboard, while PostgreSQL saves reports, tasks, and history. Redis and Celery support scheduled email reports.
 
-The diagram uses [official AWS Architecture Icons](https://aws.amazon.com/architecture/icons/). It shows the logical ECS/Fargate deployment; exact API Gateway and scheduler targets depend on deployment configuration. Dashed amber connections identify the planned PageSpeed integration and the Bedrock provider option. HTTP/source HTML evidence already comes from the scraper; dedicated tool wiring and Search Console write actions remain future extensions. No backend endpoints or credentials appear in the diagram.
 
 ## Technology Stack
 
