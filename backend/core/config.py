@@ -50,6 +50,10 @@ class Settings(BaseSettings):
 
     # Optional: only needed if LLM_MODEL_ID is pointed back at a mistral/ id.
     MISTRAL_API_KEY: str = Field(default="")
+
+    # PageSpeed Insights / Core Web Vitals. Optional at import time so tests
+    # and non-performance environments can still boot.
+    PAGESPEED_API_KEY: str = Field(default="")
     
     # Email Service Configuration (SMTP)
     SMTP_HOST: str = Field(default="smtp.gmail.com")

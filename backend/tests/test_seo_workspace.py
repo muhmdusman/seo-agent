@@ -206,6 +206,8 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
         agent.model = None
         output = AsyncMock(return_value=AnalysisDraft(report="Reviewed saved work.", tasks=[]).model_dump_json())
         with patch.object(module, "collect_search_console_data", AsyncMock(return_value={})), \
+             patch.object(module, "fetch_core_web_vitals", AsyncMock(return_value={"status": "ok", "url": request().site_url, "strategies": {"mobile": {"scores": {"performance": 80}, "field": {}, "lab": {}}}})), \
+             patch.object(module, "fetch_http_header_snapshot", AsyncMock(return_value={"status": "ok", "status_code": 200, "headers": {"content-type": "text/html"}, "redirects": []})), \
              patch.object(module, "Agent", return_value=SimpleNamespace(invoke_async=output)):
             events = [event async for event in agent.run(user_id=str(self.user), run_id=run_id,
                       **request().model_dump(exclude={"competitor_urls"}), competitor_urls=["https://competitor.test/"])]
@@ -215,6 +217,8 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
         workspace = await self.service.workspace(self.user, request().site_url)
         self.assertEqual(workspace["latest_report"]["evidence"]["reviews"][0]["status"], "manual_review")
         self.assertEqual(len(workspace["latest_report"]["evidence"]["competitors"]), 1)
+        self.assertEqual(workspace["latest_report"]["evidence"]["core_web_vitals"]["strategies"]["mobile"]["scores"]["performance"], 80)
+        self.assertNotIn("http_headers", workspace["latest_report"]["evidence"])
 
     async def test_repeated_invalid_model_output_streams_error_and_preserves_saved_work(self):
         import agents.weekly_agent as module
@@ -253,6 +257,8 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
              patch.object(routes.OAuthService, "get_valid_google_account", AsyncMock(return_value=SimpleNamespace(access_token="test-token"))), \
              patch.object(routes.SearchConsoleService, "list_sites", AsyncMock(return_value={"siteEntry": [{"siteUrl": request().site_url, "permissionLevel": "siteOwner"}]})), \
              patch.object(module, "collect_search_console_data", AsyncMock(return_value={})), \
+             patch.object(module, "fetch_core_web_vitals", AsyncMock(return_value={"status": "ok", "strategies": {}})), \
+             patch.object(module, "fetch_http_header_snapshot", AsyncMock(return_value={"status": "ok", "headers": {}, "redirects": []})), \
              patch.object(module, "Agent", return_value=SimpleNamespace(invoke_async=output)):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                 response = await client.post("/agent/weekly", json=request().model_dump() | {"mode": "review"})

@@ -121,7 +121,7 @@ class SEOWorkspaceService:
             user_id=user_id, site_url=request.site_url, report="", summary="",
             status="running", stages=assigned_stages,
             preferences={
-                **request.model_dump(mode="json", exclude={"site_url"}),
+                **request.model_dump(mode="json", exclude={"site_url", "audit_snapshot"}),
                 "phase": phase, "assigned_stages": assigned_stages,
             },
         )

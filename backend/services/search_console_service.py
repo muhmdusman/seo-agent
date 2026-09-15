@@ -1,13 +1,45 @@
 from datetime import date
 from urllib.parse import quote
+from urllib.parse import urlsplit
 
 import asyncio
 import logging
 
 import httpx
 
+from services.scraper_service import belongs_to_property
+
 
 logger = logging.getLogger(__name__)
+
+
+def verified_property_match(sites: dict, requested_site_url: str) -> str | None:
+    """Return the verified Search Console property that can serve this request."""
+    for site in sites.get("siteEntry", []):
+        if site.get("permissionLevel") == "siteUnverifiedUser":
+            continue
+        owned = site.get("siteUrl", "")
+        if property_covers_request(owned, requested_site_url):
+            return owned
+    return None
+
+
+def property_covers_request(owned_site_url: str, requested_site_url: str) -> bool:
+    """Check GSC property coverage across sc-domain and URL-prefix forms."""
+    if owned_site_url == requested_site_url:
+        return True
+    if requested_site_url.startswith(("http://", "https://")):
+        return belongs_to_property(requested_site_url, owned_site_url)
+    if requested_site_url.startswith("sc-domain:"):
+        domain = requested_site_url.removeprefix("sc-domain:").strip("/").lower()
+        if owned_site_url.startswith("sc-domain:"):
+            return owned_site_url.removeprefix("sc-domain:").strip("/").lower() == domain
+        try:
+            hostname = (urlsplit(owned_site_url).hostname or "").lower()
+        except ValueError:
+            return False
+        return hostname == domain or hostname.endswith("." + domain)
+    return False
 
 
 class SearchConsoleService:

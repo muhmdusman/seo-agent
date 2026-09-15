@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -27,18 +27,13 @@ export const metadata: Metadata = {
   creator: "Search Console Agent",
   icons: {
     icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "any" }
+      { url: "/favicon/favicon.ico", sizes: "any" },
+      { url: "/favicon/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon/favicon-16x16.png", sizes: "16x16", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    apple: [{ url: "/favicon/apple-icon-180x180.png", sizes: "180x180" }],
   },
-  manifest: "/site.webmanifest",
-  themeColor: "#4f46e5",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-  },
+  manifest: "/favicon/manifest.json",
   openGraph: {
     type: "website",
     title: "Search Console Agent | SEO review & fixes",
@@ -50,6 +45,13 @@ export const metadata: Metadata = {
     title: "Search Console Agent",
     description: "Evidence-backed SEO reviews, fixes and visibility opportunities from your Search Console data",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#f8eee4",
 };
 
 export default function RootLayout({

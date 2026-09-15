@@ -116,33 +116,11 @@ Total                        = $47-49/month
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│              AWS Free Tier Architecture                  │
-│                                                          │
-│  Frontend (Amplify - Already Deployed)                  │
-│         ↓                                                │
-│  ┌──────────────────────────────────────┐              │
-│  │   ECS Fargate (Single Container)     │              │
-│  │   Public IP: http://X.X.X.X:8000     │              │
-│  │                                       │              │
-│  │   ├─ FastAPI Backend                 │              │
-│  │   ├─ Redis Cache                     │              │
-│  │   └─ Celery Worker                   │              │
-│  └──────────────────────────────────────┘              │
-│         ↓                    ↓                           │
-│  ┌──────────────┐    ┌──────────────┐                  │
-│  │     RDS      │    │   Bedrock    │                  │
-│  │ PostgreSQL   │    │  Nova Lite   │                  │
-│  │  FREE TIER   │    │  $1-2/month  │                  │
-│  └──────────────┘    └──────────────┘                  │
-│         ↓                                                │
-│  ┌──────────────────────────────────────┐              │
-│  │ EventBridge → ECS Task (Daily)       │              │
-│  │ Scheduled Reports (8 AM UTC)         │              │
-│  └──────────────────────────────────────┘              │
-└─────────────────────────────────────────────────────────┘
-```
+![SeOup Agent AWS architecture](../docs/architecture/seo-agent-architecture.svg)
+
+[High-resolution PNG](../docs/architecture/seo-agent-architecture.png) · [Editable SVG](../docs/architecture/seo-agent-architecture.svg) · [Architecture notes](../docs/architecture/README.md)
+
+This is the logical ECS/Fargate architecture, with the configured API Gateway entry point and planned integrations labeled. The diagram does not assert a verified live Gateway or scheduler target; see the architecture notes for the differences between the deployment scripts and runtime code.
 
 ---
 
