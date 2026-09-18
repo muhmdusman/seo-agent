@@ -312,7 +312,8 @@ Public documentation lists variable names and purpose only. Do not publish actua
 | `DEBUG` | Local debug behavior |
 | `APP_URL` | Backend application base URL for server-side use |
 | `FRONTEND_URL` | Allowed frontend origin and OAuth return target |
-| `BACKEND_API_URL` | Server-side frontend rewrite target; do not expose as `NEXT_PUBLIC_*` |
+| `NEXT_PUBLIC_API_BASE_URL` | Public same-origin API path used by browser code, normally `/api/v1` |
+| `BACKEND_API_URL` | Server-side frontend rewrite target, normally the full API Gateway `/api/v1` URL |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `REDIS_URL` | Queue/cache connection string |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID |
@@ -329,6 +330,10 @@ Public documentation lists variable names and purpose only. Do not publish actua
 | `DAILY_REPORT_TIME` | Scheduled report time setting |
 
 Secrets should be injected through AWS Secrets Manager or the deployment platform's secret store.
+For production auth cookies, `GOOGLE_REDIRECT_URI` should use the frontend
+domain and same-origin API path, for example
+`https://YOUR_FRONTEND_DOMAIN/api/v1/auth/google/callback`. Do not set
+`NEXT_PUBLIC_API_BASE_URL` to the API Gateway URL.
 
 ## Usage
 

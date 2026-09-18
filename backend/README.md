@@ -167,16 +167,16 @@ All routes are mounted under the `/api/v1` prefix (see `api/main.py`).
      and the linked `User` is returned.
    - Otherwise, a new `User` and `OAuthAccount` are created
      (`AuthService.register_with_google`).
-4. The backend redirects the browser to
-   `${FRONTEND_URL}/callback?status=success&email=...` (or
-   `status=error` on failure) so the frontend can complete the flow.
+4. The backend sets HttpOnly `access_token` and `refresh_token` cookies,
+   then redirects the browser to
+   `${FRONTEND_URL}/callback?status=success` so the frontend can complete
+   the flow.
 
-> **Note:** `JWT_SECRET` / `ACCESS_TOKEN_EXPIRE_MINUTES` and the
-> `sessions` table are already configured but issuing/validating a real
-> JWT session is not yet wired into `AuthService` — the callback
-> currently redirects with the user's email in the query string only.
-> This is fine to get the frontend flow working end-to-end, but should
-> be replaced with a proper session/JWT cookie before shipping.
+> **Production note:** if the frontend is deployed behind a same-origin
+> rewrite such as `/api/v1`, register `GOOGLE_REDIRECT_URI` on the frontend
+> domain, for example
+> `https://YOUR_FRONTEND_DOMAIN/api/v1/auth/google/callback`, so cookies are
+> stored for the frontend site.
 
 ## Data Model
 

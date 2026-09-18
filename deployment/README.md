@@ -67,9 +67,12 @@ chmod +x deployment/scripts/deploy-ecs.sh
 
 ### 5. **Update Frontend Environment**
 ```bash
-# Configure the Amplify build with the server-side rewrite target
+# Browser requests must stay same-origin for auth cookies.
+NEXT_PUBLIC_API_BASE_URL=/api/v1
+
+# Configure the Amplify build with the server-side rewrite target.
 # BACKEND_API_URL=https://YOUR_API_GATEWAY_ID.execute-api.us-east-1.amazonaws.com/api/v1
-# Browser requests remain same-origin at /api/v1; do not expose an ALB/ECS URL.
+BACKEND_API_URL=https://YOUR_API_GATEWAY_ID.execute-api.us-east-1.amazonaws.com/api/v1
 ```
 
 **Done! 🎉**
