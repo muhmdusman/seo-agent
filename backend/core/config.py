@@ -1,4 +1,5 @@
 from functools import lru_cache
+from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -68,10 +69,36 @@ class Settings(BaseSettings):
     DAILY_REPORT_TIME: str = "08:00"
     ADMIN_EMAIL: str = Field(...)
 
+    # Fastn workflow execution. The API key is optional at startup so local
+    # development and tests can boot without the integration configured.
+    FASTN_API_BASE_URL: str = Field(default="https://api.fastn.dev")
+    FASTN_WORKFLOW_ID: str = Field(default="wf_3dd1351b36da")
+    FASTN_API_KEY: str = Field(default="")
+    FASTN_AUTH_HEADER: str = Field(default="Authorization")
+    FASTN_AUTH_SCHEME: str = Field(default="Bearer")
+    FASTN_TENANT_HEADER: str = Field(default="x-fastn-space-tenantid")
+    FASTN_TIMEOUT_SECONDS: float = Field(default=30.0, gt=0)
+
     #redis config
     # REDIS_HOST:str = Field(...)|"localhost"
     # REDIS_PORT:int = Field(...)|6379
     REDIS_URL: str = Field("redis://redis:6379/0")
+
+    @property
+    def ASYNC_DATABASE_URL(self) -> str:
+        """Return a SQLAlchemy async Postgres URL.
+
+        Managed platforms commonly expose DATABASE_URL as postgresql:// or
+        postgres://. The app uses SQLAlchemy async sessions with psycopg, so
+        normalize those URLs at the edge while keeping local
+        postgresql+psycopg:// values unchanged.
+        """
+        parsed = urlsplit(self.DATABASE_URL)
+
+        if parsed.scheme in {"postgres", "postgresql"}:
+            return urlunsplit(parsed._replace(scheme="postgresql+psycopg"))
+
+        return self.DATABASE_URL
 
     @property
     def LLM_API_KEY(self) -> str:

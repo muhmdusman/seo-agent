@@ -12,6 +12,7 @@ from models.seo_task import SEOTask, SEOSubtask
 from schemas.seo import AnalysisDraft, AnalysisRequest
 from services.seo_reports_service import SEOReportsService
 from services.seo_review_service import check_page
+from services.site_settings_service import SiteSettingsService, resolved_target_platform
 
 
 PRIORITIES = {"critical": 0, "high": 1, "medium": 2, "quick-win": 3}
@@ -32,7 +33,7 @@ def task_json(task):
     return {
         "id": str(task.id), "report_id": str(task.report_id),
         **{key: getattr(task, key) for key in (
-            "stage", "title", "priority", "scope", "evidence",
+            "stage", "title", "priority", "target_platform", "scope", "evidence",
             "why_it_matters", "manual_fix", "agent_prompt",
         )},
         "completed_at": task.completed_at.isoformat() if task.completed_at else None,
@@ -149,6 +150,8 @@ class SEOWorkspaceService:
         task_stats = {"candidate": len(draft.tasks), "created": 0, "reused": 0, "already_observed": 0}
         run.evidence = {**observations, "task_generation": task_stats}
         run.status = "completed"
+        site_settings = await SiteSettingsService(self.db).get(run.user_id, run.site_url)
+        repo_configured = bool(site_settings.github_owner and site_settings.github_repo)
         # Preserve task identity and the user's checkbox state across reviews.
         def fingerprint(task):
             check = task.verification
@@ -174,9 +177,11 @@ class SEOWorkspaceService:
                 continue
             seen.add(key)
             task_stats["created"] += 1
+            task_data = task.model_dump(exclude={"subtasks", "existing_task_id"})
+            task_data["target_platform"] = resolved_target_platform(task_data, repo_configured)
             self.db.add(SEOTask(
                 report_id=run.id, position=position,
-                **task.model_dump(exclude={"subtasks", "existing_task_id"}),
+                **task_data,
                 subtasks=[SEOSubtask(title=title, position=index) for index, title in enumerate(task.subtasks)],
             ))
         # A report and its task batch become visible together, or neither does.

@@ -26,6 +26,7 @@ class TaskDraft(BaseModel):
     stage: Stage
     title: Annotated[NonEmpty, Field(max_length=200)]
     priority: Literal["critical", "high", "medium", "quick-win"]
+    target_platform: Literal["github", "search_console", "google_sheets", "manual_review"] = "manual_review"
     scope: Annotated[NonEmpty, Field(max_length=2000)]
     evidence: Annotated[NonEmpty, Field(max_length=2000)]
     why_it_matters: Annotated[NonEmpty, Field(max_length=2000)]
