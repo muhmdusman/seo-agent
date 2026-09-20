@@ -256,6 +256,7 @@ class FastnTaskSyncTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["siteUrl"], "sc-domain:example.test")
         self.assertEqual(payload["spreadsheetId"], "sheet-123")
         self.assertEqual(payload["spreadsheetName"], "SEO Tasks")
+        self.assertEqual(payload["content_author_email"], "owner@example.test")
         self.assertEqual(payload["tasks"][0]["id"], str(task_id))
         self.assertEqual(payload["tasks"][0]["target_platform"], "github")
         self.assertEqual(payload["tasks"][0]["subtasks"], ["Add tag"])

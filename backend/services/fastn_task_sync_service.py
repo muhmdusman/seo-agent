@@ -5,6 +5,7 @@ from sqlalchemy.orm import selectinload
 
 from models.seo_report import SEOReport
 from models.seo_task import SEOTask
+from models.user import User
 from services.fastn_workflow_service import FastnWorkflowService
 from services.site_settings_service import SiteSettingsService, resolved_target_platform
 
@@ -35,6 +36,7 @@ class FastnTaskSyncService:
             return {"status": "NO_NEW_TASKS", "reportId": str(report.id)}
 
         settings = await SiteSettingsService(self.db).get(report.user_id, report.site_url)
+        app_user = await self.db.get(User, report.user_id)
         repo_configured = bool(settings.github_owner and settings.github_repo)
         logger.info(
             "fastn.task_sync.loaded report_id=%s user_id=%s site_url=%s task_count=%s repo=%s/%s spreadsheet_id=%s spreadsheet_name=%s",
@@ -58,6 +60,7 @@ class FastnTaskSyncService:
             "google_spreadsheet_name": settings.google_spreadsheet_name,
             "spreadsheetId": settings.google_spreadsheet_id,
             "spreadsheetName": settings.google_spreadsheet_name,
+            "content_author_email": getattr(app_user, "email", "") or "",
             "tasks": [{
                 "id": str(task.id),
                 "title": task.title,

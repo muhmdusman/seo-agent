@@ -92,6 +92,24 @@ The destination workflow must return only the connected customer's repos and spr
 8. `execute()` resolves and sends the matching installation ID.
 9. The workflow writes task rows to the selected spreadsheet and creates GitHub issues only for tasks routed to GitHub.
 
+For backend-created tasks, the same workflow also performs conditional enrichment:
+
+```text
+Competitor-analysis task -> SerpAPI googleSearch -> compact result summary
+Blog-post/service-page task -> Groq draft -> ButterCMS draft, then WordPress.com draft fallback
+Completed backend task batch -> Slack channel summary when Slack is connected and a matching channel is available
+```
+
+These connector calls are best-effort per task. A missing SerpAPI, ButterCMS,
+WordPress.com, or Slack connection is written into the task result and does not
+discard the saved Google Sheets task handoff. CMS output is created as a draft;
+the workflow does not publish content automatically.
+
+The workflow was mock-validated after this branch was added. Fastn's manifest
+readback currently still shows the original four connector entries, even after
+refresh, so live execution of the newly referenced connectors remains an
+explicit follow-up rather than an assumed success.
+
 ## Required Headers
 
 Workflow execution must use:

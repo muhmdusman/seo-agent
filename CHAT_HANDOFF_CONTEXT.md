@@ -4,16 +4,17 @@ Last updated: 2026-09-20
 
 This file is for the next Codex session. It is intentionally detailed because this
 chat covered Fastn tenant isolation, widget credentials, Google/GitHub connector
-routing, and a new Daytona-backed SEO coding agent. Treat this as handoff context,
-not runtime configuration.
+routing, conditional SerpAPI/CMS/Slack task enrichment, and a Daytona-backed SEO
+coding agent. Treat this as handoff context, not runtime configuration.
 
 ## Current Objective
 
 The app is an SEO agent platform. The weekly/daily SEO agent analyzes a user's
 site and saves tasks in the database. Fastn workflows handle connector-backed
-destinations such as Google Sheets and GitHub issues. A separate coding agent is
-being added so selected GitHub tasks can generate safe code diffs, show those
-diffs in the UI, and only create branches/PRs after approval.
+destinations such as Google Sheets and GitHub issues, enrich competitor tasks
+with SerpAPI, create draft content in a connected CMS, and send task summaries
+to Slack when available. A separate coding agent generates safe code diffs for
+selected GitHub tasks and only creates branches/PRs after approval.
 
 The coding agent must:
 
@@ -75,6 +76,19 @@ Current Fastn implementation to preserve:
 - `backend/api/routes/fastn.py` logs user ID/email/end-org and routes destination
   picker requests through resolved customer context.
 - The second workflow, `wf_3dd1351b36da`, must run after the SEO agent.
+
+The Fastn widget `wgt_e50e98094782` now displays GitHub, Google Sheets, Google
+Drive, SerpAPI, ButterCMS, WordPress.com, and Slack. The task workflow creates
+CMS drafts only, prefers ButterCMS when its connection and required metadata are
+available, falls back to WordPress.com, and records connector failures without
+aborting the Google Sheets handoff. Slack uses `slack_channel` when supplied or
+looks for `seo-agent`, `seo`, or `general`.
+
+The new workflow branches were mock-validated after publication. Fastn's
+connector-manifest readback still reports only the original four workflow
+connectors, so live SerpAPI/CMS/Slack execution is not considered verified until
+that platform metadata is refreshed or an explicitly approved live smoke test is
+run.
 
 ## Coding Agent Implementation State
 

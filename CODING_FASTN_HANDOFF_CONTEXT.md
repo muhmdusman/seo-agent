@@ -52,8 +52,10 @@ FastnTaskSyncService
   into the configured Fastn workflow.
 
 Fastn workflow wf_3dd1351b36da
-  Writes task records to connected Google Sheets and creates GitHub issues for
-  GitHub-routed tasks.
+  Writes task records to connected Google Sheets, creates GitHub issues for
+  GitHub-routed tasks, enriches competitor tasks with SerpAPI, creates editorial
+  CMS drafts when content tasks match a connected ButterCMS/WordPress.com account,
+  and sends a Slack summary when a suitable channel is available.
 ```
 
 Keep these boundaries intact. The weekly agent orchestrates; the coding agent
@@ -176,6 +178,12 @@ implementation_completed_at
 The backend sends these fields to Fastn. The hosted Fastn workflow must map them
 to the desired Google Sheets columns or GitHub issue body fields if connected
 apps need to display them.
+
+The backend also sends `content_author_email` from the authenticated app user.
+Fastn accepts optional `wordpress_site`, `butter_page_type`, `slack_channel`, and
+`notify_slack` values in a backend task payload. CMS writes are draft-only by
+default. Connector failures are captured in the task note/result and do not stop
+the rest of the batch.
 
 If those values are missing in Google Sheets while present in backend logs, check
 the Fastn workflow mapping before changing backend code.
