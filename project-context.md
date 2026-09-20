@@ -1,5 +1,13 @@
 # Search Console Agent: Fastn Integration
 
+Canonical Fastn debugging guide:
+
+```text
+FASTN_WORKFLOW_CONTEXT.md
+```
+
+Use that file when diagnosing tenant, end-org, installation, embed token, repo picker, spreadsheet picker, or workflow execution issues.
+
 ## Overview
 
 The application runs SEO analysis locally, saves reports and tasks in PostgreSQL, sends completed tasks to Fastn, and uses Fastn connectors to write task records to Google Sheets and create GitHub issues for implementation work. A Gmail summary is sent after each completed analysis.
@@ -8,9 +16,14 @@ The application runs SEO analysis locally, saves reports and tasks in PostgreSQL
 SEO analysis -> save report/tasks -> Fastn workflow -> Google Sheets -> GitHub issues -> Gmail summary
 ```
 
-Fastn workflow:
+Fastn workflows:
 
 ```text
+Destination picker:
+ID: wf_84cad8eacfc8
+Name: SEO Agent Destination Options
+
+Post-agent task handoff:
 ID: wf_3dd1351b36da
 Name: Daily SEO Agent Site Worker
 ```
@@ -32,10 +45,9 @@ POST /api/v1/fastn/embed-token
 The backend then:
 
 1. Reads the authenticated application user.
-2. Looks up the user's Fastn customer organization by stable user ID.
-3. Creates a Fastn `end_org` through `POST https://api.fastn.dev/api/v1/orgs` when missing.
-4. Requests an embed token from `POST https://api.fastn.dev/api/v1/embed/token`.
-5. Returns the iframe URL to the frontend.
+2. Resolves the app user ID to the real Fastn customer `endOrgId` through the embed-token mapping.
+3. Requests an embed token from `POST https://api.fastn.dev/api/v1/embed/token`.
+4. Returns the iframe URL to the frontend.
 
 The Fastn API key stays server-side. It must never be added to frontend code.
 
@@ -50,11 +62,14 @@ Connectors: GitHub, Google Sheets
 Activation mode: MULTI_CONNECTION
 ```
 
-Each user has an isolated Fastn tenant. Workflow requests include:
+Each user has an isolated Fastn end-org and matching widget installation. Workflow requests include:
 
 ```text
-x-fastn-space-tenantid: <fastn customer org id>
+x-end-org-id: <real Fastn customer/end-org id>
+x-installation-id: <matching widget installation id>
 ```
+
+Do not change this back to `x-fastn-space-tenantid`; that was the source of previous connector and tenant resolution failures.
 
 ## Fastn Workflow Branches
 
@@ -178,10 +193,13 @@ Fastn configuration is in `backend/.env`:
 ```text
 FASTN_API_BASE_URL=https://api.fastn.dev
 FASTN_WORKFLOW_ID=wf_3dd1351b36da
+FASTN_DESTINATIONS_WORKFLOW_ID=wf_84cad8eacfc8
+FASTN_WIDGET_ID=wgt_e50e98094782
 FASTN_API_KEY=<server-side Fastn API key>
 FASTN_AUTH_HEADER=Authorization
 FASTN_AUTH_SCHEME=Bearer
-FASTN_TENANT_HEADER=x-fastn-space-tenantid
+FASTN_TENANT_HEADER=x-end-org-id
+FASTN_INSTALLATION_HEADER=x-installation-id
 FASTN_TIMEOUT_SECONDS=30
 ```
 
@@ -270,4 +288,5 @@ If the dashboard shows an organization error:
 1. Refresh the dashboard to request a new embed token.
 2. Confirm the backend can access `FASTN_API_KEY`.
 3. Confirm test keys receive `X-fastn-Test-Mode: true`.
-4. Confirm the user tenant exists or allow the automatic `/api/v1/orgs` provisioning path to create it.
+4. Confirm `resolve_customer_end_org(app_user_id)` returns the real Fastn `endOrgId`, not the app user UUID.
+5. Confirm installation lookup returns the installation serving the same end-org and widget.
