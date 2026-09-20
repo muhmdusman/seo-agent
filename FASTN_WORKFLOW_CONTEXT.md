@@ -64,12 +64,14 @@ Never hardcode the debug end-org or installation into production code.
 
 1. The frontend calls `POST /api/v1/fastn/embed-token`.
 2. The backend reads the authenticated app user.
-3. The backend calls `FastnWorkflowService.resolve_customer_end_org(app_user_id)`.
-4. That resolver calls Fastn embed token creation and reads `data.endOrgId`.
-5. The frontend opens the Fastn embed UI for that customer.
-6. The frontend calls `GET /api/v1/fastn/destinations`.
-7. The backend runs `wf_84cad8eacfc8` with the real Fastn end-org.
-8. `execute()` resolves the matching installation and sends both:
+3. The backend calls `FastnWorkflowService.create_embed_token(app_user_id)`.
+4. The widget token request must use the app user UUID as the stable customer reference. Do not pre-resolve this route to the Fastn end-org before minting the widget token.
+5. If Fastn returns `404 x-org-id does not match a customer organization of this account`, the backend creates the customer org using the app user UUID as `external_ref`, then retries the widget token request with the same app user UUID.
+6. Fastn returns the widget token and mapped `data.endOrgId`.
+7. The frontend opens the Fastn embed UI for that customer.
+8. The frontend calls `GET /api/v1/fastn/destinations`.
+9. The backend resolves the app user to the real Fastn end-org, then runs `wf_84cad8eacfc8`.
+10. `execute()` resolves the matching installation and sends both:
 
 ```text
 x-end-org-id: <real Fastn customer end-org>
@@ -142,6 +144,16 @@ Fix the customer end-org resolution first. Do not try to bypass authorization ch
 
 The backend is using the app user UUID or an org-management alias as the execution tenant. Resolve the customer through the embed-token mapping and execute with the returned Fastn `endOrgId`.
 
+### `x-org-id does not match a customer organization of this account`
+
+This happens for a brand-new app user that does not yet have a Fastn customer org mapping. Existing users can mint a widget token immediately, which is why one account may work while another fails.
+
+Fix:
+
+1. Create or ensure the customer org with `external_ref=<app user UUID>`.
+2. Retry `create_embed_token(<same app user UUID>)`.
+3. Do not retry by passing the returned Fastn end-org as the widget token `x-org-id`.
+
 ### GitHub `createIssue` 404
 
 Likely causes:
@@ -193,6 +205,7 @@ Apply migrations against the same database the backend is using.
 ## Code Rules for Future Agents
 
 - Use `resolve_customer_end_org(app_user_id)` as the authoritative app-user-to-Fastn-end-org mapping.
+- For `/api/v1/fastn/embed-token`, call `create_embed_token_for_customer(app_user_id, display_name)`. The widget token boundary uses the app user reference, creates the Fastn customer mapping if missing, and returns the mapped `endOrgId`.
 - Do not use `ensure_customer_org()` as the execution tenant resolver for existing customer workflow runs.
 - Keep `FASTN_TENANT_HEADER=x-end-org-id`.
 - Keep installation handling. Do not remove `x-installation-id`.

@@ -45,9 +45,12 @@ POST /api/v1/fastn/embed-token
 The backend then:
 
 1. Reads the authenticated application user.
-2. Resolves the app user ID to the real Fastn customer `endOrgId` through the embed-token mapping.
+2. Requests the widget embed token using the app user UUID as the stable customer reference.
 3. Requests an embed token from `POST https://api.fastn.dev/api/v1/embed/token`.
-4. Returns the iframe URL to the frontend.
+4. Reads the returned `endOrgId` for display/debugging.
+5. Returns the iframe URL to the frontend.
+
+Do not pre-resolve `/api/v1/fastn/embed-token` to the Fastn end-org before minting the widget token. Workflow execution is the path that resolves the app user to a real Fastn end-org and sends `x-end-org-id` plus `x-installation-id`.
 
 The Fastn API key stays server-side. It must never be added to frontend code.
 
