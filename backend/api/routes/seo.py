@@ -14,8 +14,37 @@ from services.search_console_service import SearchConsoleService, verified_prope
 from services.seo_workspace_service import SEOWorkspaceService, report_json
 from tools.page_speed_tool import compact_core_web_vitals, fetch_core_web_vitals
 from tools.source_html_tool import compact_http_headers, fetch_http_header_snapshot
+from schemas.site_settings import SiteSettingsResponse, SiteSettingsUpdate
+from services.site_settings_service import SiteSettingsService
 
 router = APIRouter(prefix="/seo", tags=["SEO workspace"])
+
+
+def _site_settings_json(site_url, row):
+    return {
+        "site_url": site_url,
+        "github_repo_url": f"https://github.com/{row.github_owner}/{row.github_repo}" if row.github_owner and row.github_repo else "",
+        "github_owner": row.github_owner or "",
+        "github_repo": row.github_repo or "",
+    }
+
+
+@router.get("/site-settings", response_model=SiteSettingsResponse)
+async def site_settings(site_url: str = Query(min_length=1, max_length=2000),
+                        user=Depends(authenticate), db: AsyncSession = Depends(get_db)):
+    row = await SiteSettingsService(db).get(UUID(user["sub"]), site_url)
+    return _site_settings_json(site_url, row)
+
+
+@router.put("/site-settings", response_model=SiteSettingsResponse)
+async def update_site_settings(site_url: str = Query(min_length=1, max_length=2000),
+                               body: SiteSettingsUpdate = ..., user=Depends(authenticate),
+                               db: AsyncSession = Depends(get_db)):
+    try:
+        row = await SiteSettingsService(db).update(UUID(user["sub"]), site_url, body.github_repo_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _site_settings_json(site_url, row)
 
 
 @router.get("/sites")

@@ -120,6 +120,13 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60
 | `JWT_SECRET` | yes | — | Secret used to sign issued JWTs |
 | `JWT_ALGORITHM` | no | `HS256` | JWT signing algorithm |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | no | `60` | Access token lifetime |
+| `FASTN_API_KEY` | yes for Fastn workflow execution | — | API key used to call the Fastn workflow execution API |
+| `FASTN_API_BASE_URL` | no | `https://api.fastn.dev` | Fastn API base URL |
+| `FASTN_WORKFLOW_ID` | no | `wf_3dd1351b36da` | Fastn workflow id for the daily SEO site worker |
+| `FASTN_AUTH_HEADER` | no | `Authorization` | Header used for Fastn API authentication |
+| `FASTN_AUTH_SCHEME` | no | `Bearer` | Auth scheme for the Fastn API key; test keys also send `X-fastn-Test-Mode: true` |
+
+After a completed agent review, new saved tasks are sent to the Fastn workflow with their stable task IDs. Fastn records them in its Tasks sheet and creates GitHub issues only for tasks marked `target_platform=github` when the site has a repository mapping. Search Console actions remain review items. If the Fastn handoff fails, the report and tasks remain saved; retry with `POST /api/v1/fastn/reports/{report_id}/sync` while signed in. Apply the latest Alembic migration before starting the backend.
 
 ### 4. Run database migrations
 

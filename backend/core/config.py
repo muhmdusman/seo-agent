@@ -68,6 +68,16 @@ class Settings(BaseSettings):
     DAILY_REPORT_TIME: str = "08:00"
     ADMIN_EMAIL: str = Field(...)
 
+    # Fastn workflow execution. The API key is optional at startup so local
+    # development and tests can boot without the integration configured.
+    FASTN_API_BASE_URL: str = Field(default="https://api.fastn.dev")
+    FASTN_WORKFLOW_ID: str = Field(default="wf_3dd1351b36da")
+    FASTN_API_KEY: str = Field(default="")
+    FASTN_AUTH_HEADER: str = Field(default="Authorization")
+    FASTN_AUTH_SCHEME: str = Field(default="Bearer")
+    FASTN_TENANT_HEADER: str = Field(default="x-fastn-space-tenantid")
+    FASTN_TIMEOUT_SECONDS: float = Field(default=30.0, gt=0)
+
     #redis config
     # REDIS_HOST:str = Field(...)|"localhost"
     # REDIS_PORT:int = Field(...)|6379

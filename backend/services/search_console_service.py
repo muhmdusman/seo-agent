@@ -114,7 +114,7 @@ class SearchConsoleService:
         access_token: str,
     ):
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=12) as client:
 
             response = await client.get(
                 f"{self.BASE_URL}/sites",
@@ -258,7 +258,7 @@ class SearchConsoleService:
         end_date: date,
     ):
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=12) as client:
 
             (
                 queries,

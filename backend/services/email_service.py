@@ -63,6 +63,26 @@ class EmailService:
             subject=subject,
             html_body=html_body,
         )
+
+    async def send_analysis_summary(
+        self,
+        user_email: str,
+        user_name: str,
+        site_url: str,
+        summary: str,
+        report_date: str,
+    ) -> bool:
+        html_body = self._format_report_html(
+            user_name=user_name,
+            site_url=site_url,
+            report_content=summary,
+            report_date=report_date,
+        )
+        return await self._send_email(
+            to_email=user_email,
+            subject=f"SEO analysis summary for {site_url} - {report_date}",
+            html_body=html_body,
+        )
     
     async def send_error_notification(
         self,

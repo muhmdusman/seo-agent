@@ -23,6 +23,7 @@ class SEOTask(Base):
     stage: Mapped[str] = mapped_column(String(40))
     title: Mapped[str] = mapped_column(String(200))
     priority: Mapped[str] = mapped_column(String(20))
+    target_platform: Mapped[str] = mapped_column(String(30), default="manual_review", server_default="manual_review")
     scope: Mapped[str] = mapped_column(Text)
     evidence: Mapped[str] = mapped_column(Text)
     why_it_matters: Mapped[str] = mapped_column(Text)
