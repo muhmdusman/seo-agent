@@ -2,9 +2,11 @@
 import asyncio
 import json
 import logging
+from uuid import UUID
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin, urlsplit
 from zoneinfo import ZoneInfo
+from sqlalchemy import select
 
 from strands import Agent
 from strands.models.litellm import LiteLLMModel
@@ -21,6 +23,9 @@ from schemas.seo import AnalysisDraft
 from services.scraper_service import ScraperService
 from services.seo_review_service import SEOReviewService
 from services.seo_task_generation_service import build_fallback_tasks
+from services.fastn_task_sync_service import FastnTaskSyncService
+from models.user import User
+from services.email_service import email_service
 from services.seo_workspace_service import SEOWorkspaceService
 from tools.page_speed_tool import compact_core_web_vitals, fetch_core_web_vitals
 from tools.search_console_tool import collect_search_console_data
@@ -215,14 +220,14 @@ class WeeklyAgent:
             yield "Preparing findings and next actions..."
             draft = await self._validated_analysis(prompt)
             model_task_count = len(draft.tasks)
-            if not draft.tasks and phase == "framework" and not history["recent_tasks"]:
+            if not draft.tasks:
                 fallback_tasks = build_fallback_tasks(
                     pages, snapshot.get("query_pages", {}).get("rows", []),
                 )
                 if fallback_tasks:
                     logger.warning(
-                        "Model returned no tasks for initial site review; saving %d evidence-backed fallback tasks",
-                        len(fallback_tasks),
+                        "Model returned no tasks for phase=%s; saving %d evidence-backed fallback tasks",
+                        phase, len(fallback_tasks),
                     )
                     draft = AnalysisDraft(
                         report=draft.report + "\n\n### Saved actions\nThe task queue includes direct actions from the sampled page and Search Console evidence.",
@@ -235,6 +240,22 @@ class WeeklyAgent:
                 len(snapshot.get("query_pages", {}).get("rows", [])),
             )
             saved = await self.workspace_service.finish_run(run_id, draft, evidence)
+            try:
+                await FastnTaskSyncService(self.db).sync_report(saved.id, UUID(user_id))
+            except Exception:
+                logger.exception("Fastn task handoff failed for report %s", saved.id)
+            try:
+                user = await self.db.scalar(select(User).where(User.id == UUID(user_id)))
+                if user:
+                    await email_service.send_analysis_summary(
+                        user_email=user.email,
+                        user_name=user.username or user.email.split("@", 1)[0],
+                        site_url=site_url,
+                        summary=draft.summary or draft.report[:2000],
+                        report_date=datetime.now(timezone.utc).strftime("%B %d, %Y"),
+                    )
+            except Exception:
+                logger.exception("Analysis summary email failed for report %s", saved.id)
             yield {"type": "result", "report_id": str(saved.id)}
             yield STATUS_COMPLETED
         except AnalysisOutputError as error:
