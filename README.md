@@ -1,380 +1,520 @@
-<div align="center">
-
 # SeOup Agent
 
-**An AI SEO agent for small and mid-sized websites that analyzes Search Console, performance, and technical data, fixes what it can, and turns the rest into actionable tasks.**
+SeOup Agent is an agentic SEO operations platform for small and mid-sized
+businesses that need consistent SEO work but do not have a dedicated SEO
+specialist, developer, content team, or agency budget.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](backend/.python-version)
-[![Strands Agents](https://img.shields.io/badge/Strands%20Agents-Agents%20for%20Humans%20Hackathon-232F3E.svg)](https://strandsagents.com/)
+It connects website owners to the evidence behind their search performance,
+turns that evidence into prioritized tasks, performs narrowly scoped actions
+when it can do so safely, and routes the remaining work to the tools and people
+that can complete it.
 
-[Live application](https://main.d2cjd8wxgkx3po.amplifyapp.com/) · [Repository](https://github.com/muhmdusman/seo-agent)
+> Hackathon status: This repository is a working hackathon prototype. Local
+> analysis, task persistence, coding-agent proposals, Fastn routing, and the UI
+> are implemented. Some external integrations still depend on tenant
+> connections, connector metadata, or explicit live-smoke approval.
 
-</div>
+## The Problem
 
----
+Small and mid-sized shops usually understand that SEO matters, but they rarely
+have someone whose full-time job is to monitor Search Console, inspect
+technical issues, research competitors, refresh content, maintain CMS pages,
+and report results.
 
-## Problem
+The result is an expensive gap:
 
-Small and mid-sized websites often know SEO matters, but they do not always have the budget for dedicated SEO professionals, expensive platforms, or daily manual monitoring. The team is usually busy with the actual business while SEO becomes one of those important but boring tasks that keeps getting postponed.
+- Search visibility and indexing problems remain unnoticed.
+- Important technical fixes compete with daily business work.
+- SEO tools produce data but not a clear order of operations.
+- Content opportunities are identified but never reach the CMS.
+- Developers receive vague requests instead of safe, specific implementation
+  tasks.
+- Owners have no reliable weekly feedback loop.
 
-That gap is costly. Common search visibility, indexing, performance, content, and technical issues can sit unnoticed for weeks, and by the time a business sees the traffic drop, the fix is already overdue.
+SeOup Agent gives a small team the practical equivalent of an SEO operator:
+evidence, prioritization, safe execution, and a clear handoff.
 
-SeOup Agent was built for exactly this problem:
+## Product Promise
 
-**When you are busy focusing on important business work, SeOup Agent handles the boring but important SEO work for you.**
+The product follows one rule:
 
-## Who It's For
+**Investigate what matters, fix what is safe, and make the remaining work
+actionable.**
 
-SeOup Agent is designed for small to mid-sized websites and businesses:
+It is not just a chatbot and it is not just a dashboard of raw metrics. It is a
+workflow that combines search data, website context, historical reports, SEO
+skills, model reasoning, coding proposals, and connected business tools.
 
-- Founders and small teams that need SEO direction without hiring a full-time specialist.
-- Local businesses that want visibility but do not have time to check technical search issues every day.
-- Small agencies that need repeatable, evidence-backed SEO monitoring for client sites.
-- Developers and site owners who want clear tasks instead of generic SEO checklists.
+## Core Workflow
 
-## Solution
+~~~text
+Connect site
+  -> Run staged SEO analysis
+  -> Collect evidence from relevant tools
+  -> Reason over evidence and site context
+  -> Apply supported safe actions
+  -> Save report and tasks in PostgreSQL
+  -> Generate coding proposals for eligible GitHub tasks
+  -> Send task state to Fastn
+  -> Write connected-app results
+  -> Review progress on the next run
+~~~
 
-SeOup Agent is not a simple chatbot or a raw SEO data dashboard. It is an agentic SEO workflow that investigates a website through multiple tools, reasons over the results, performs supported actions when it safely can, and creates actionable tasks for everything else.
+The weekly/daily handoff order is intentional:
 
-The core workflow is:
+~~~text
+WeeklyAgent
+  -> saves the completed report and tasks
+  -> CodingAgent proposes sandbox diffs for eligible tasks
+  -> FastnTaskSyncService sends the updated task state
+  -> Fastn writes Sheets/GitHub/CMS/Slack results where configured
+~~~
 
-```text
-Collect -> Analyze -> Reason -> Fix -> Create Tasks -> Report
-```
+The database remains the source of truth. Fastn is the connected-app handoff
+layer, not the coding runtime.
 
-The agent combines tool data, SEO skills, website context, user goals, saved history, and Strands agent reasoning to decide what matters most for a specific website.
+## SEO Analysis
 
-## How SeOup Agent Works
+The analysis is staged so a large website can be reviewed over multiple bounded
+runs instead of producing one oversized, low-signal audit.
 
-The agent gathers evidence from Google Search Console, sitemap data, website context, saved historical reports, and the current SEO skill framework. The intended toolset also includes PageSpeed Insights/Core Web Vitals and a dedicated source HTML/HTTP headers tool, documented here so the README already matches the near-term architecture without claiming those integrations are fully wired yet.
+| Group | Stages | Typical questions |
+| --- | --- | --- |
+| Foundation | Technical Foundation, Crawlability, Rendering, Indexability | Does the site respond, crawl, render, and expose the right URLs? |
+| Content | On-Page, Content | Are titles, metadata, headings, copy, and internal links useful? |
+| Relevance | Search Intent, Semantic SEO | Do pages match demand and build topical authority? |
+| Frontier | AI/GEO | Is the site clear, citable, trustworthy, and accessible to emerging answer systems? |
 
-After collecting evidence, the agent determines:
-
-1. What is wrong with the website's SEO.
-2. Why the issue matters.
-3. What should be improved.
-4. How it can be improved.
-5. What should be done first.
-6. Which actions can be performed autonomously.
-7. Which actions require the website owner or developer.
-
-The result is a structured report, prioritized SEO tasks, manual fix instructions, and coding-agent prompts that can be handed directly to a developer.
-
-## Agentic Workflow
-
-SeOup Agent uses a staged workflow rather than returning a one-time audit:
-
-```text
-User goal
-  -> Strands SEO Agent
-  -> Select relevant tools
-  -> Collect evidence
-  -> Apply SEO skills
-  -> Reason over the site context
-  -> Fix supported issues or create tasks
-  -> Save report and history
-  -> Continue monitoring
-```
-
-The product has three main analysis modes:
-
-- **SEO review & fixes** identifies evidence-backed technical, content, indexing, and visibility issues.
-- **Check changes and their results** revisits saved task URLs, checks observable changes, and compares later Search Console performance windows when enough data exists.
-- **Opportunities to get more visibility** runs after the nine-stage framework and looks for growth opportunities, competitor evidence, internal-linking improvements, and follow-up experiments.
-
-The agent does not treat the end of the framework as the end of the workflow. Once a site has gone through the staged review, SeOup Agent keeps reviewing results and looking for the next useful opportunity.
-
-## Agent Tools & Capabilities
-
-### Google Search Console
-
-Search Console is used for search performance data, queries, clicks, impressions, indexing information, URL inspection, sitemap-related operations, and supported indexing actions.
-
-The agent uses Search Console to reason about actual search visibility and indexing problems, not just to display data. When the app is configured with the required write permissions, supported actions such as sitemap submission or indexing requests can be performed as user-approved agent actions.
-
-### PageSpeed Insights
-
-PageSpeed Insights is part of the intended agent toolset. It will use the Google PageSpeed Insights API to retrieve relevant performance and SEO signals, including Core Web Vitals, LCP, CLS, INP, performance score, SEO score, and Lighthouse diagnostics.
-
-The agent should not blindly call PageSpeed at every stage. Strands decides when performance information is relevant to the current investigation and invokes the tool when required. The PageSpeed tool should normalize the API response and extract important signals instead of passing the entire raw response into the model context. Its API key belongs in secure environment configuration and must never be exposed publicly.
-
-### Source HTML & HTTP Headers
-
-The planned dedicated source HTML tool will retrieve HTTP response status, headers, source HTML, and important SEO signals from the page. It should extract compact structured evidence such as title, meta description, canonical, robots directives, H1 and main headings, important links, content visibility, and other technical SEO signals.
-
-The full raw HTML should not be passed into the agent context. The tool should parse the page and provide only the information needed for SEO reasoning. That lets the agent decide whether the page returns correctly, whether important metadata exists, whether meaningful content is visible in source HTML, whether content appears server-rendered, and whether browser rendering is needed.
-
-Browser rendering, such as Playwright, can be used as an escalation path when source HTML is insufficient. It should not be the default for every page.
-
-### Sitemap Analysis
-
-Sitemap analysis helps the agent inspect sitemap health, discover important URLs, identify sitemap/index gaps, and decide which pages should be checked first.
-
-### SEO Skills
-
-Structured SEO skills and rules provide the domain knowledge used by the agent when interpreting tool results. They keep the output grounded in a repeatable SEO framework instead of a generic checklist.
-
-## Intelligent Tool Calling
-
-The system is not designed as:
-
-```text
-Call every tool -> combine everything -> generate report
-```
-
-The point of using an agent architecture is that Strands can decide which tool is relevant to the current SEO investigation:
-
-- Search Console for search visibility, indexing, queries, and URL inspection.
-- PageSpeed Insights for performance and Core Web Vitals.
-- Source HTML for metadata, headings, content availability, and technical HTML.
-- HTTP headers for server response and technical signals.
-- Sitemap analysis for sitemap health and URL discovery.
-- Browser rendering only when rendering needs to be verified.
-
-This avoids unnecessary API calls, latency, cost, and oversized context. The agent calls tools when they add useful evidence.
-
-## Autonomous SEO Actions
-
-For supported Search Console operations, the intended workflow is:
-
-```text
-Agent can fix -> Agent performs the action
-Agent cannot safely or directly fix -> Agent creates a task with instructions
-```
-
-Examples of user-approved autonomous actions include submitting a sitemap, requesting indexing for a URL, or performing other supported Search Console actions when the required permissions are configured.
-
-For website code, content, design, CMS, or business decisions that cannot safely be changed by the agent, SeOup Agent creates a clear task for the user or developer.
-
-## SEO Skills & Reasoning
-
-Every site moves through a nine-stage SEO framework. Website size controls how many stages fit into one bounded run; it does not remove stages.
-
-| Group | Ordered stages | Typical focus |
-|---|---|---|
-| Foundation | 1. Technical Foundation, 2. Crawlability, 3. Rendering, 4. Indexability | HTTP status, robots, sitemaps, redirects, raw HTML, JavaScript dependencies, canonicals, indexing signals |
-| Content | 5. On-Page, 6. Content | Titles, metadata, headings, links, page copy, depth, freshness, useful coverage |
-| Relevance | 7. Search Intent, 8. Semantic SEO | Query/page alignment, striking-distance queries, entities, topical relationships, internal authority paths |
-| Frontier | 9. AI/GEO | Clear answers, E-E-A-T signals, citable content, brand clarity, AI crawler accessibility |
-
-Supporting lenses run inside these stages rather than becoming competing stage labels:
+Supporting lenses can run inside those stages:
 
 - Local SEO
 - Ecommerce SEO
 - International SEO
 - Internal linking
-- Competitor analysis and competitor research
+- Competitor research
 
-Run size caps are `1-10: up to 4 stages`, `11-30: up to 3`, `31-100: up to 2`, and `101+: 1 stage`. Saved coverage determines the next sequential bundle.
+The agent considers website size, website type, user goals, Search Console
+performance, technical evidence, previous reports, saved tasks, and completed
+changes. It does not give every site the same checklist.
 
-## Personalized / Goal-Based Analysis
+## Actionable Output
 
-SeOup Agent does not give every website the same checklist. The final analysis is based on:
+Each important finding becomes a structured task containing:
 
-```text
-Tool data + SEO skills + website context/size + user goal + agent reasoning
-```
-
-The agent considers website size, website type, user goals, Search Console analytics, technical signals, performance signals, existing SEO issues, historical reports, and saved tasks. That context helps it prioritize the problems that actually matter for that website.
-
-## Actionable Tasks
-
-The agent does not stop at "you have an SEO problem." For every important issue, the output explains:
-
-- What's wrong.
+- What is wrong.
 - Why it matters.
-- How to improve it.
-- Step-by-step instructions.
-- Priority.
-- Whether the agent can fix it automatically.
-- Whether the user needs to perform the action.
+- Evidence supporting the finding.
+- A recommended fix.
+- Step-by-step manual instructions.
+- Priority and stage.
+- Whether the task can be automated.
+- A target destination such as GitHub, a CMS, or manual review.
+- A coding-agent prompt when a safe content/template proposal is possible.
 
-Each model response is validated against a strict schema before it is saved. The server owns task identity, status, dates, deduplication, completion state, and later review state.
+Tasks are validated before persistence. The server owns task identity,
+deduplication, status, dates, completion state, and implementation state.
 
-## Historical Reports
+## Coding Agent
 
-SeOup Agent saves previous SEO reports so users can access earlier findings, review what was recommended, track previously identified issues, and understand SEO progress over time.
+The coding agent prepares reviewable proposals for eligible GitHub tasks after
+the SEO report is saved.
 
-Historical reports also become context for later runs. The agent can avoid repeating the same work and can focus on the next stage, a saved change review, or a new visibility opportunity.
+### Proposal flow
 
-## Weekly Email Reports
+~~~text
+Select completed report tasks
+  -> Require target_platform=github
+  -> Load the user's repository mapping
+  -> Create an isolated sandbox
+  -> Verify the remote matches the selected repository
+  -> Read limited repository context
+  -> Ask the model for a unified diff
+  -> Validate paths and content policy
+  -> Apply and test the proposal in the sandbox
+  -> Save diff and result on seo_tasks
+~~~
 
-The platform supports scheduled weekly SEO analysis and email delivery. This matters for busy users who may not log into the dashboard regularly.
+The automatic weekly flow may propose changes, but it does not approve, push,
+or publish them.
 
-```text
-Weekly scheduler -> SEO Agent -> Tool analysis -> Reasoning -> Report -> Email -> User inbox
-```
+Current safety policy:
 
-The user can stay informed about important SEO issues even when they have not opened the dashboard.
+- Allowed proposal files are HTML, Markdown, and MDX.
+- JavaScript, TypeScript, CSS, configuration, dependencies, tests, and assets
+  are blocked by default.
+- Executable logic, imports, scripts, and event handlers are rejected.
+- The repository remote must match the user's saved GitHub owner/repository.
+- Publishing requires the explicit coding-agent approval route.
 
-## Strands Agents Integration
+Approval endpoint:
 
-Strands Agents is the orchestration and reasoning layer of SeOup Agent. It is central to the product behavior, not just a dependency.
+~~~text
+POST /api/v1/agent/coding/{task_id}/approve
+~~~
 
-Strands enables the agent to:
+Proposal endpoint:
 
-- Reason over information gathered from multiple tools.
-- Decide which tools are necessary for a particular SEO investigation.
-- Call tools only when relevant.
-- Combine results from different sources.
-- Apply SEO skills to those results.
-- Decide whether an issue can be fixed automatically.
-- Determine when a user task needs to be created.
-- Produce prioritized and contextual SEO analysis.
+~~~text
+POST /api/v1/agent/coding/{task_id}/propose
+~~~
 
-Conceptually:
+## Fastn Connected-App Workflow
 
-```text
-User goal
-  -> Strands SEO Agent
-  -> Select relevant tools
-  -> Collect evidence
-  -> Apply SEO skills
-  -> Reason
-  -> Fix / create tasks
-  -> Report
-```
+Fastn hosts the connector workflow used after the local report and coding-agent
+proposal step.
 
-The active checked-in model path uses LiteLLM provider abstraction with `groq/openai/gpt-oss-120b`. The AWS deployment path is designed to support Amazon Bedrock through the same provider boundary and an IAM task role.
+### Workflows
 
-## AWS Architecture
+| Workflow | Purpose |
+| --- | --- |
+| wf_84cad8eacfc8 | Destination picker for connected GitHub repositories and Google Sheets |
+| wf_3dd1351b36da | Scheduled SEO worker and backend task handoff |
 
-The AWS deployment is organized around a public dashboard, a backend API, a Strands-powered SEO agent runtime, persistent storage, and scheduled reporting.
+The widget is wgt_e50e98094782 and exposes:
 
-The documented deployment uses AWS Amplify, an Amazon API Gateway entry point, Amazon ECS on Fargate, Amazon ECR, Amazon RDS for PostgreSQL, Amazon EventBridge, AWS Secrets Manager, AWS IAM, and Amazon CloudWatch. Amazon Bedrock is the AWS model provider option; the checked-in model default uses Groq. The container configuration runs FastAPI, Redis, and a Celery worker together.
+- GitHub
+- Google Sheets
+- Google Drive
+- SerpAPI
+- ButterCMS
+- WordPress.com
+- Slack
 
-## Architecture Diagram
+### Conditional task routing
 
-![SeOup Agent architecture with official AWS icons, the dashboard request path, Strands runtime, evidence sources, model providers, persistence, and scheduled email delivery](docs/architecture/seo-agent-architecture.svg)
+~~~text
+Competitor URL task
+  -> SerpAPI googleSearch
+  -> compact result summary
+  -> task result, Google Sheets notes, GitHub context, Slack summary
 
-[High-resolution PNG](docs/architecture/seo-agent-architecture.png) · [Editable SVG](docs/architecture/seo-agent-architecture.svg) · [Architecture notes and regeneration instructions](docs/architecture/README.md)
+Blog post or service page task
+  -> Groq content draft
+  -> ButterCMS draft when connected and metadata is available
+  -> WordPress.com draft fallback
 
-The request path is **Website owner → Amplify dashboard → API Gateway → FastAPI / Strands runtime**. Results return through the API to the dashboard, while PostgreSQL saves reports, tasks, and history. Redis and Celery support scheduled email reports.
+All backend task batches
+  -> Google Sheets task rows
+  -> GitHub issues for GitHub-routed implementation tasks
+  -> Slack summary when a suitable channel is available
+~~~
 
+CMS writes are draft-only. The workflow never auto-publishes content.
+content_author_email, wordpress_site, butter_page_type, slack_channel, and
+notify_slack can be supplied by the backend or task payload.
+
+Missing optional connectors are recorded in the task result and do not abort
+the Google Sheets handoff or the rest of the batch.
+
+### Fastn tenant isolation
+
+Every customer must execute under their own Fastn customer/end-org and matching
+installation:
+
+~~~text
+x-end-org-id: <real Fastn customer end-org>
+x-installation-id: <installation serving that end-org>
+~~~
+
+Do not use x-fastn-space-tenantid as the customer execution tenant. The app
+user UUID is the stable application-side customer reference, not the Fastn
+execution tenant.
+
+The Fastn API key stays server-side. It must never be placed in frontend code.
+
+## System Architecture
+
+~~~text
+Next.js dashboard
+  -> FastAPI API
+  -> Google OAuth and JWT session
+  -> WeeklyAgent / Strands Agents
+  -> SEO tools and model provider
+  -> PostgreSQL reports, tasks, history, site settings
+  -> CodingAgent sandbox proposals
+  -> Fastn workflow and customer connectors
+  -> Google Sheets / GitHub / CMS / Slack
+
+Celery + Redis
+  -> scheduled weekly reports and email delivery
+~~~
+
+### Backend ownership
+
+- WeeklyAgent runs the SEO investigation and saves reports/tasks.
+- SEOWorkspaceService owns report/task persistence and staged progress.
+- CodingAgent creates constrained implementation proposals.
+- CodingAgentSandbox handles local or Daytona sandbox execution.
+- CodingAgentPolicy validates proposed changes.
+- FastnTaskSyncService builds the per-user Fastn payload.
+- FastnWorkflowService resolves the customer end-org, installation, and
+  workflow execution headers.
+- PostgreSQL is the system of record.
+
+### Frontend ownership
+
+The Next.js dashboard provides:
+
+- Google authentication flow.
+- Site and analysis controls.
+- Reports, tasks, history, and progress views.
+- Coding-agent implementation state.
+- Fastn connection manager iframe.
+- Integration catalog for the seven supported/visible connectors.
 
 ## Technology Stack
 
 | Layer | Technology |
-|---|---|
+| --- | --- |
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS 4, Radix UI, Lucide |
+| Backend | FastAPI, Python 3.11+, Pydantic |
 | Agent orchestration | Strands Agents |
-| Model abstraction | LiteLLM, Groq model path, Bedrock-ready provider boundary |
-| Backend API | FastAPI, Python 3.11, Pydantic |
-| Persistence | PostgreSQL, SQLAlchemy, Alembic |
-| Background jobs | Celery, Redis/Valkey-compatible broker |
-| Frontend | Next.js, React, TypeScript |
-| Deployment | AWS Amplify, ECS Fargate, ECR, RDS, EventBridge, Secrets Manager, CloudWatch |
-| Email | SMTP-compatible email delivery |
+| Model abstraction | LiteLLM; current Groq path, Bedrock-ready boundary |
+| Current model | groq/openai/gpt-oss-120b |
+| Database | PostgreSQL, SQLAlchemy async |
+| Migrations | Alembic |
+| Background work | Celery with Redis/Valkey-compatible broker |
+| Coding sandbox | Local GitSandbox for tests; Daytona option for production proposals |
+| Auth | Google OAuth 2.0, JWT application session |
+| Connected apps | Fastn connectors for GitHub, Sheets, Drive, SerpAPI, ButterCMS, WordPress.com, Slack |
+| Deployment target | AWS Amplify, API Gateway, ECS/Fargate, ECR, RDS, EventBridge, Secrets Manager, CloudWatch |
+| Email | SMTP-compatible delivery |
 
-## Setup / Installation
+## Repository Structure
 
-Prerequisites:
+~~~text
+backend/
+  agents/
+    weekly_agent.py
+    coding_agent.py
+  api/
+    routes/
+  services/
+    seo_workspace_service.py
+    fastn_workflow_service.py
+    fastn_task_sync_service.py
+    coding_agent_policy.py
+    coding_agent_sandbox.py
+  models/
+  schemas/
+  alembic/
+  tests/
+  main.py
+
+frontend/
+  src/app/
+  src/components/
+  src/lib/
+  package.json
+
+docs/
+  architecture/
+
+FASTN_WORKFLOW_CONTEXT.md
+CODING_FASTN_HANDOFF_CONTEXT.md
+CHAT_HANDOFF_CONTEXT.md
+project-context.md
+~~~
+
+## Local Development
+
+### Prerequisites
 
 - Python 3.11+
-- [uv](https://docs.astral.sh/uv/)
+- uv
 - Node.js 20+
 - Docker and Docker Compose
-- Google Cloud OAuth client with the Search Console API enabled
-- Model provider credentials or AWS Bedrock/IAM configuration
+- Google Cloud OAuth web client with Search Console access
+- A model-provider key for the selected model
 
-Quick start:
+### Backend
 
-```bash
-cp .env.example .env
-./dev.sh
-```
-
-Manual backend setup:
-
-```bash
+~~~powershell
 cd backend
-docker compose -f docker-compose.yaml up -d
 uv sync
+docker compose -f docker-compose.yaml up -d
 uv run alembic upgrade head
 uv run uvicorn main:app --host 127.0.0.1 --port 8000 --reload
-```
+~~~
 
-Frontend setup:
+The backend serves at http://localhost:8000; OpenAPI documentation is at
+http://localhost:8000/docs.
 
-```bash
+### Frontend
+
+~~~powershell
 cd frontend
 npm install
 npm run dev
-```
+~~~
 
-## Environment Variables
+The frontend normally serves at http://localhost:3000.
 
-Public documentation lists variable names and purpose only. Do not publish actual values.
+### Environment
+
+Copy the root template and place backend runtime values in backend/.env:
+
+~~~powershell
+Copy-Item .env.example backend/.env
+~~~
+
+Never commit real secrets. Important variables include:
 
 | Variable | Purpose |
-|---|---|
-| `APP_NAME` | Application display name |
-| `DEBUG` | Local debug behavior |
-| `APP_URL` | Backend application base URL for server-side use |
-| `FRONTEND_URL` | Allowed frontend origin and OAuth return target |
-| `NEXT_PUBLIC_API_BASE_URL` | Public same-origin API path used by browser code, normally `/api/v1` |
-| `BACKEND_API_URL` | Server-side frontend rewrite target, normally the full API Gateway `/api/v1` URL |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `REDIS_URL` | Queue/cache connection string |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `GOOGLE_REDIRECT_URI` | Registered OAuth callback |
-| `JWT_SECRET` | Token signing secret |
-| `LLM_MODEL_ID` | Active model identifier |
-| `GROQ_API_KEY` | Groq provider key when using the Groq model path |
-| `AWS_REGION` | AWS region for deployed services |
-| `BEDROCK_MODEL_ID` | Bedrock model identifier for the AWS provider path |
-| `PAGESPEED_API_KEY` | PageSpeed API key for the planned performance tool |
-| `SMTP_*` | SMTP server, sender, and credential configuration |
-| `SCHEDULER_ENABLED` | Enables or disables scheduled report routes |
-| `DAILY_REPORT_TIME` | Scheduled report time setting |
+| --- | --- |
+| DATABASE_URL | Async PostgreSQL connection |
+| REDIS_URL | Celery broker/cache |
+| GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET | Google OAuth |
+| GOOGLE_REDIRECT_URI | OAuth callback |
+| JWT_SECRET | Application token signing |
+| LLM_MODEL_ID | Active model identifier |
+| GROQ_API_KEY | Groq model access |
+| AWS_REGION / BEDROCK_MODEL_ID | Bedrock deployment option |
+| FASTN_API_KEY | Server-side Fastn workflow execution |
+| FASTN_API_BASE_URL | Fastn API base URL |
+| FASTN_WORKFLOW_ID | Defaults to wf_3dd1351b36da |
+| FASTN_AUTH_HEADER / FASTN_AUTH_SCHEME | Fastn authentication |
+| CODING_AGENT_ENABLED | Enables report-level coding proposals |
+| CODING_AGENT_SANDBOX_PROVIDER | local or daytona |
+| CODING_AGENT_ENVIRONMENT | test or production |
+| CODING_AGENT_GITHUB_TOKEN | Required only for approved publish |
+| DAYTONA_API_KEY | Daytona sandbox access |
+| PAGESPEED_API_KEY | PageSpeed integration when enabled |
+| SMTP_* | Weekly email delivery |
+| SCHEDULER_ENABLED / DAILY_REPORT_TIME | Scheduled analysis behavior |
 
-Secrets should be injected through AWS Secrets Manager or the deployment platform's secret store.
-For production auth cookies, `GOOGLE_REDIRECT_URI` should use the frontend
-domain and same-origin API path, for example
-`https://YOUR_FRONTEND_DOMAIN/api/v1/auth/google/callback`. Do not set
-`NEXT_PUBLIC_API_BASE_URL` to the API Gateway URL.
+Customer repository, spreadsheet, CMS, and channel choices belong in
+site_settings or task payloads. They must not be hardcoded in environment
+variables.
 
-## Usage
+## Database and Migrations
 
-1. Connect a verified Google Search Console property.
-2. Select the site, website size, website type, and primary goal.
-3. Run an SEO review.
-4. Review the agent's evidence, reasoning, fixes, and tasks.
-5. Complete manual tasks or allow supported Search Console actions when configured.
-6. Re-run change/result review to see what changed and what should happen next.
-7. Use weekly email reports to stay informed without opening the dashboard every day.
+The important persisted concepts are:
 
-## Example Workflow
+- Users and OAuth accounts.
+- Site settings and selected destination choices.
+- SEO reports and staged analysis progress.
+- SEO tasks and deduplication state.
+- Coding-agent implementation status, diff, result, and error fields.
 
-```text
-Small business owner connects Search Console
-  -> chooses "local visibility" as the goal
-  -> SeOup Agent checks Search Console, sitemap, site evidence, and saved history
-  -> Strands selects only the relevant tools
-  -> agent finds an indexing, metadata, or performance issue
-  -> supported Search Console action is performed when allowed
-  -> remaining work becomes prioritized tasks
-  -> weekly report is emailed to the user
-```
+Run migrations with:
 
-## Future Improvements
+~~~powershell
+cd backend
+uv run alembic upgrade head
+~~~
 
-- Wire the dedicated PageSpeed Insights tool with compact normalized output.
-- Wire the dedicated source HTML and HTTP headers tool with structured SEO extraction.
-- Add browser rendering as an escalation path for pages where source HTML is not enough.
-- Expand Search Console write actions behind explicit user approval.
-- Add richer result comparison for completed tasks.
-- Improve dashboard views for historical reports and progress over time.
+After changing SQLAlchemy models:
 
-## Hackathon / Agents for Humans
+~~~powershell
+uv run alembic revision --autogenerate -m "describe change"
+uv run alembic upgrade head
+~~~
 
-SeOup Agent was built for the Strands Agents / Agents for Humans Hackathon. The project focuses on a practical human problem: small businesses do not need another dashboard full of raw SEO data; they need an agent that investigates, reasons, fixes what it can, and turns the rest into clear next steps.
+## API Surface
 
-Strands Agents is the heart of that behavior. It lets the system choose tools, combine evidence, apply SEO skills, and produce contextual actions instead of a generic SEO report.
+All backend routes are mounted below /api/v1. The main areas are:
 
-## Authors and License
+- /auth for Google OAuth and session handling.
+- /sites for site settings and selected destinations.
+- /reports for report retrieval and history.
+- /agents for analysis runs and coding-agent proposal/approval.
+- /fastn for embed tokens, destination options, and report resync.
 
-Built by [Muhammad Usman](https://github.com/muhmdusman) and [Muhaddis](https://github.com/Muhaddis-igis) for the Strands Agents / Agents for Humans Hackathon.
+If a Fastn handoff fails, the report and tasks remain in PostgreSQL. A
+completed report can be retried with:
 
-Released under the [MIT License](LICENSE).
+~~~text
+POST /api/v1/fastn/reports/{report_id}/sync
+~~~
+
+## Testing and Verification
+
+Backend focused tests:
+
+~~~powershell
+cd backend
+$env:DEBUG='false'
+.\.venv\Scripts\python.exe -m unittest tests.test_fastn_workflow tests.test_coding_agent tests.test_coding_agent_policy tests.test_coding_agent_sandbox
+~~~
+
+Frontend checks:
+
+~~~powershell
+cd frontend
+npm.cmd run lint
+npm.cmd run build
+~~~
+
+Fastn validation is performed with mock connector execution. The current
+workflow regression set covers:
+
+1. Scheduled worker behavior with no ready site.
+2. Existing backend task handoff.
+3. Competitor-task SerpAPI enrichment.
+4. Blog/service-page content routing.
+
+The latest mock validation passes all four cases. It does not write to a
+customer's live CMS, Slack, GitHub, or Google Sheets.
+
+## Current Limitations
+
+- Live SerpAPI, ButterCMS, WordPress.com, and Slack execution depends on
+  connected customer accounts and Fastn action metadata.
+- Fastn currently reports the new connector entries as non-stale, but action
+  lists still require platform-level verification.
+- CMS output is draft-only; automatic publishing is intentionally disabled.
+- Coding-agent proposals are limited to safe HTML/Markdown/MDX changes.
+- Approved publishing requires a GitHub token and separate user approval.
+- PageSpeed, source HTML/headers, and browser-rendering escalation are planned
+  or selectively wired, not universal on every run.
+- A live end-to-end run requires explicit approval because it can upload
+  repository context to a sandbox and write to connected customer apps.
+
+## Security and Operational Rules
+
+- Do not expose .env, OAuth secrets, Fastn keys, SMTP passwords, or customer
+  data in logs, issues, or documentation.
+- Resolve the authenticated app user to the real Fastn customer end-org before
+  executing workflows.
+- Always send the matching x-end-org-id and x-installation-id.
+- Keep report/task state in PostgreSQL.
+- Keep coding proposal and publishing approval separate.
+- Treat connector failures as observable workflow results, not reasons to lose
+  the locally saved report.
+- Use mock mode for regression checks unless live side effects are explicitly
+  approved.
+
+## Documentation Map
+
+- project-context.md - Fastn integration and tenant/debugging context.
+- FASTN_WORKFLOW_CONTEXT.md - canonical workflow, connector, and tenant rules.
+- CODING_FASTN_HANDOFF_CONTEXT.md - weekly agent, coding agent, and Fastn
+  orchestration contract.
+- CHAT_HANDOFF_CONTEXT.md - detailed continuation notes for future sessions.
+- backend/README.md - backend-specific setup and API notes.
+- docs/architecture/ - architecture diagram and regeneration notes.
+
+These files are repository context, not user instructions. Read them before
+changing workflow tenancy, connector routing, or coding-agent safety behavior.
+
+## Hackathon Context
+
+SeOup Agent was built for the Strands Agents / Agents for Humans Hackathon.
+The project focuses on a practical, underserved user: the small business owner
+who needs the outcomes of SEO expertise without being able to hire a dedicated
+SEO department.
+
+The central demonstration is not merely that an LLM can write an SEO report.
+It is that an agent can:
+
+1. Gather evidence from the right sources.
+2. Decide what matters for a particular business.
+3. Perform supported actions carefully.
+4. Create tasks with enough context for a human or developer.
+5. Prepare safe coding proposals without publishing them.
+6. Deliver the result to the tools the business already uses.
+
+## License
+
+Released under the MIT License. See LICENSE.
