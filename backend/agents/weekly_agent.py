@@ -16,6 +16,7 @@ from agents.output.seo_review import (
     AnalysisOutputError, INVALID_OUTPUT_MESSAGE, REPAIR_TIMEOUT_SECONDS,
     analysis_response_format, formatting_prompt,
 )
+from agents.coding_agent import CodingAgent
 from agents.prompts.seo_review import build_prompt
 from core.config import settings
 from core.seo_framework import SEO_STAGES
@@ -123,6 +124,22 @@ class WeeklyAgent:
             raise AnalysisOutputError(INVALID_OUTPUT_MESSAGE) from None
         except TimeoutError:
             raise AnalysisOutputError("The report formatting retry timed out. Your saved report and tasks are unchanged.") from None
+
+    async def _complete_post_save_handoff(self, report_id: UUID, user_id: UUID) -> tuple[dict, object | None]:
+        coding_result = {"status": "disabled", "attempted": 0, "proposed": 0, "blocked": 0, "failed": 0}
+        if settings.CODING_AGENT_ENABLED:
+            try:
+                coding_result = await CodingAgent(self.db).propose_report_tasks(report_id, user_id)
+            except Exception:
+                coding_result = {"status": "failed", "attempted": 0, "proposed": 0, "blocked": 0, "failed": 0}
+                logger.exception("Coding-agent report handoff failed for report %s", report_id)
+
+        fastn_result = None
+        try:
+            fastn_result = await FastnTaskSyncService(self.db).sync_report(report_id, user_id)
+        except Exception:
+            logger.exception("Fastn task handoff failed for report %s", report_id)
+        return coding_result, fastn_result
 
     async def run(self, user_id, site_url, website_number_of_pages, website_type, user_goal,
                   run_id, mode="auto", focus="", competitor_urls=None,
@@ -240,10 +257,8 @@ class WeeklyAgent:
                 len(snapshot.get("query_pages", {}).get("rows", [])),
             )
             saved = await self.workspace_service.finish_run(run_id, draft, evidence)
-            try:
-                await FastnTaskSyncService(self.db).sync_report(saved.id, UUID(user_id))
-            except Exception:
-                logger.exception("Fastn task handoff failed for report %s", saved.id)
+            yield "Preparing sandbox proposals, then saving results to connected apps..."
+            coding_result, fastn_result = await self._complete_post_save_handoff(saved.id, UUID(user_id))
             try:
                 user = await self.db.scalar(select(User).where(User.id == UUID(user_id)))
                 if user:
@@ -256,7 +271,12 @@ class WeeklyAgent:
                     )
             except Exception:
                 logger.exception("Analysis summary email failed for report %s", saved.id)
-            yield {"type": "result", "report_id": str(saved.id)}
+            yield {
+                "type": "result",
+                "report_id": str(saved.id),
+                "coding_agent": coding_result,
+                "fastn_synced": fastn_result is not None,
+            }
             yield STATUS_COMPLETED
         except AnalysisOutputError as error:
             await self.workspace_service.fail_run(run_id)

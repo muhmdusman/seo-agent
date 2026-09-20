@@ -232,6 +232,10 @@ class FastnTaskSyncTests(unittest.IsolatedAsyncioTestCase):
             evidence="Viewport is absent", why_it_matters="Mobile layout is affected",
             manual_fix="Add viewport metadata", agent_prompt="Edit the page head",
             subtasks=[SimpleNamespace(title="Add tag")], verification=None,
+            implementation_status="proposed", implementation_attempts=1,
+            implementation_branch="seo-agent/task-123-a1", implementation_diff="diff --git a/index.html b/index.html",
+            implementation_result={"sandbox_tests": {"git_diff_check": "passed"}}, implementation_error="",
+            implementation_started_at=None, implementation_completed_at=None,
         )
         db = SimpleNamespace(
             scalar=AsyncMock(side_effect=[report, site_settings]),
@@ -255,6 +259,12 @@ class FastnTaskSyncTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["tasks"][0]["id"], str(task_id))
         self.assertEqual(payload["tasks"][0]["target_platform"], "github")
         self.assertEqual(payload["tasks"][0]["subtasks"], ["Add tag"])
+        self.assertEqual(payload["tasks"][0]["implementation_status"], "proposed")
+        self.assertEqual(payload["tasks"][0]["implementation_branch"], "seo-agent/task-123-a1")
+        self.assertEqual(
+            payload["tasks"][0]["implementation_result"]["sandbox_tests"]["git_diff_check"],
+            "passed",
+        )
         self.assertEqual(result["selectedSheet"]["spreadsheetName"], "SEO Tasks")
         workflow.resolve_customer_end_org.assert_awaited_once_with(str(user_id))
         self.assertEqual(workflow.execute.await_args.kwargs["tenant_id"], "end-org-1")

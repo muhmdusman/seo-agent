@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.weekly_agent import WeeklyAgent, STATUS_COMPLETED, STATUS_FAILED
+from agents.coding_agent import CodingAgent, CodingAgentError
 from core.config import settings
 from db.dbconfig import AsyncSessionLocal, get_db
 from dependencies.auth import authenticate
@@ -19,6 +20,39 @@ from services.seo_workspace_service import SEOWorkspaceService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agent", tags=["Agent"])
+
+
+@router.post("/coding/{task_id}")
+async def coding_agent(task_id: UUID, user=Depends(authenticate), db: AsyncSession = Depends(get_db)):
+    return await propose_coding_agent(task_id, user, db)
+
+
+@router.post("/coding/{task_id}/propose")
+async def propose_coding_agent(task_id: UUID, user=Depends(authenticate), db: AsyncSession = Depends(get_db)):
+    if not settings.CODING_AGENT_ENABLED:
+        raise HTTPException(503, "The coding agent is disabled.")
+    try:
+        logger.info("coding_agent.route.propose.start task_id=%s user_id=%s", task_id, user["sub"])
+        return await CodingAgent(db).propose_task(task_id, UUID(user["sub"]))
+    except CodingAgentError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Coding agent proposal failed task_id=%s user_id=%s", task_id, user["sub"])
+        raise HTTPException(502, "Coding agent could not safely propose this task.") from exc
+
+
+@router.post("/coding/{task_id}/approve")
+async def approve_coding_agent(task_id: UUID, user=Depends(authenticate), db: AsyncSession = Depends(get_db)):
+    if not settings.CODING_AGENT_ENABLED:
+        raise HTTPException(503, "The coding agent is disabled.")
+    try:
+        logger.info("coding_agent.route.approve.start task_id=%s user_id=%s", task_id, user["sub"])
+        return await CodingAgent(db).approve_task(task_id, UUID(user["sub"]))
+    except CodingAgentError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Coding agent approval failed task_id=%s user_id=%s", task_id, user["sub"])
+        raise HTTPException(502, "Coding agent could not safely approve this task.") from exc
 
 
 @router.post("/weekly")
@@ -41,7 +75,9 @@ async def weekly_agent(request: Request, body: AnalysisRequest,
         async with AsyncSessionLocal() as stream_db:
             service = SEOWorkspaceService(stream_db)
             try:
-                async with asyncio.timeout(240):
+                # A weekly run now includes bounded Daytona proposals before the
+                # Fastn handoff, so allow enough time for several eligible tasks.
+                async with asyncio.timeout(900 if settings.CODING_AGENT_ENABLED else 240):
                     agent = WeeklyAgent(stream_db)
                     async for chunk in agent.run(
                         user_id=str(user_id), run_id=run_id,

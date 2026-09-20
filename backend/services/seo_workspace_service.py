@@ -38,6 +38,16 @@ def task_json(task):
         )},
         "completed_at": task.completed_at.isoformat() if task.completed_at else None,
         "verification": task.verification, "review": task.review,
+        "implementation": {
+            "status": task.implementation_status,
+            "attempts": task.implementation_attempts,
+            "branch": task.implementation_branch,
+            "diff": task.implementation_diff,
+            "result": task.implementation_result,
+            "error": task.implementation_error,
+            "started_at": task.implementation_started_at.isoformat() if task.implementation_started_at else None,
+            "completed_at": task.implementation_completed_at.isoformat() if task.implementation_completed_at else None,
+        },
         "subtasks": [
             {"id": str(sub.id), "title": sub.title,
              "completed_at": sub.completed_at.isoformat() if sub.completed_at else None}

@@ -75,6 +75,18 @@ class FastnTaskSyncService:
                 "agent_prompt": task.agent_prompt,
                 "subtasks": [subtask.title for subtask in task.subtasks],
                 "verification": task.verification,
+                "implementation_status": task.implementation_status,
+                "implementation_attempts": task.implementation_attempts,
+                "implementation_branch": task.implementation_branch,
+                "implementation_diff": task.implementation_diff,
+                "implementation_result": task.implementation_result,
+                "implementation_error": task.implementation_error,
+                "implementation_started_at": (
+                    task.implementation_started_at.isoformat() if task.implementation_started_at else None
+                ),
+                "implementation_completed_at": (
+                    task.implementation_completed_at.isoformat() if task.implementation_completed_at else None
+                ),
             } for task in tasks],
         }
         fastn_end_org_id = await self.workflow.resolve_customer_end_org(

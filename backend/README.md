@@ -126,7 +126,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60
 | `FASTN_AUTH_HEADER` | no | `Authorization` | Header used for Fastn API authentication |
 | `FASTN_AUTH_SCHEME` | no | `Bearer` | Auth scheme for the Fastn API key; test keys also send `X-fastn-Test-Mode: true` |
 
-After a completed agent review, new saved tasks are sent to the Fastn workflow with their stable task IDs. Fastn records them in its Tasks sheet and creates GitHub issues only for tasks marked `target_platform=github` when the site has a repository mapping. Search Console actions remain review items. If the Fastn handoff fails, the report and tasks remain saved; retry with `POST /api/v1/fastn/reports/{report_id}/sync` while signed in. Apply the latest Alembic migration before starting the backend.
+After a completed review, the weekly agent saves tasks locally, asks the coding agent to generate reviewable sandbox proposals for new GitHub tasks, and only then sends the tasks and implementation results to Fastn. Fastn records them in its Tasks sheet and creates GitHub issues only for tasks marked `target_platform=github` when the site has a repository mapping. Sandbox proposals never push code; the separate approval endpoint publishes an approved branch or pull request. Search Console actions remain review items. If the Fastn handoff fails, the report and tasks remain saved; retry with `POST /api/v1/fastn/reports/{report_id}/sync` while signed in. Apply the latest Alembic migration before starting the backend.
 
 ### 4. Run database migrations
 

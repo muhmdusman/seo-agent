@@ -82,6 +82,27 @@ class Settings(BaseSettings):
     FASTN_INSTALLATION_HEADER: str = Field(default="x-installation-id")
     FASTN_TIMEOUT_SECONDS: float = Field(default=30.0, gt=0)
 
+    # Repository identity is never configuration. It comes from the selected
+    # per-user SiteSettings row at runtime. This optional local checkout is a
+    # test-only override for offline development and must match that selection.
+    CODING_AGENT_TEST_REPOSITORY_ROOT: str = Field(default="")
+    CODING_AGENT_ENABLED: bool = True
+    CODING_AGENT_SANDBOX_PROVIDER: str = Field(default="local")
+    CODING_AGENT_ENVIRONMENT: str = Field(default="test")
+    CODING_AGENT_PREVIEW_ROOT: str = Field(default=".coding-agent/previews")
+    CODING_AGENT_TEST_ALLOWED_PATHS: str = Field(
+        default="index.html,home.html,homepage.html,public/index.html,pages/index.md,pages/index.mdx,pages/index.html,app/page.md,app/page.mdx,app/page.html,src/app/page.md,src/app/page.mdx,src/app/page.html",
+    )
+    CODING_AGENT_GITHUB_TOKEN: str = Field(default="")
+    CODING_AGENT_GITHUB_BASE_BRANCH: str = Field(default="main")
+    DAYTONA_API_KEY: str = Field(default="")
+    DAYTONA_API_URL: str = Field(default="https://app.daytona.io/api")
+    DAYTONA_TARGET: str = Field(default="")
+    DAYTONA_SANDBOX_NAME_PREFIX: str = Field(default="SEO_agent_sandbox")
+    DAYTONA_SANDBOX_AUTO_STOP_MINUTES: int = Field(default=15, ge=0)
+    DAYTONA_SANDBOX_AUTO_ARCHIVE_MINUTES: int = Field(default=10080, ge=0)
+    DAYTONA_SANDBOX_EPHEMERAL: bool = Field(default=True)
+
     #redis config
     # REDIS_HOST:str = Field(...)|"localhost"
     # REDIS_PORT:int = Field(...)|6379
