@@ -106,9 +106,11 @@ discard the saved Google Sheets task handoff. CMS output is created as a draft;
 the workflow does not publish content automatically.
 
 The workflow was mock-validated after this branch was added. Fastn's manifest
-readback currently still shows the original four connector entries, even after
-refresh, so live execution of the newly referenced connectors remains an
-explicit follow-up rather than an assumed success.
+readback now includes SerpAPI, ButterCMS, WordPress.com, and Slack with
+`stale: false`, but their action lists are still empty; some pre-existing
+connector entries retain stale metadata. Live execution of the newly referenced
+connectors remains an explicit follow-up rather than an assumed success until
+action-level metadata is available or an approved live smoke test passes.
 
 ## Required Headers
 

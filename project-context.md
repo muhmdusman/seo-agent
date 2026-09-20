@@ -73,9 +73,9 @@ Activation mode: MULTI_CONNECTION
 
 GitHub, Google Sheets, and Google Drive are the connectors used by the current
 destination-picker and task-handoff workflows. SerpAPI, ButterCMS, WordPress.com,
-and Slack are visible in the widget and dashboard integration catalog for future
-setup, and the task-handoff workflow now references them conditionally for
-competitor research, editorial CMS drafts, and Slack summaries.
+and Slack are also visible in the widget and dashboard integration catalog. The
+task-handoff workflow references those four conditionally for competitor research,
+editorial CMS drafts, and Slack summaries.
 
 Task-handoff routing:
 
@@ -91,11 +91,12 @@ when supplied by the backend or task payload. Missing connector connections are
 recorded as task results and do not abort the rest of the handoff.
 
 Verification note: Fastn mock execution for workflow `wf_3dd1351b36da` covers
-the competitor and content branches, but the Fastn connector-manifest endpoint
-still reports the original Google Search Console, GitHub, Google Sheets, and
-Groq entries after refresh. Do not claim live SerpAPI/CMS/Slack execution is
-verified until Fastn exposes those new manifest entries or an explicitly
-approved live smoke test confirms them.
+the competitor and content branches, and the manifest now includes SerpAPI,
+ButterCMS, WordPress.com, and Slack with `stale: false`. Fastn still reports
+empty action lists for those new entries, while some pre-existing entries retain
+stale metadata. Do not claim live SerpAPI/CMS/Slack execution is verified until
+the action-level manifest is populated or an explicitly approved live smoke test
+confirms it.
 
 Each user has an isolated Fastn end-org and matching widget installation. Workflow requests include:
 

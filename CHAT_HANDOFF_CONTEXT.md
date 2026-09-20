@@ -85,10 +85,10 @@ aborting the Google Sheets handoff. Slack uses `slack_channel` when supplied or
 looks for `seo-agent`, `seo`, or `general`.
 
 The new workflow branches were mock-validated after publication. Fastn's
-connector-manifest readback still reports only the original four workflow
-connectors, so live SerpAPI/CMS/Slack execution is not considered verified until
-that platform metadata is refreshed or an explicitly approved live smoke test is
-run.
+connector-manifest readback now includes SerpAPI, ButterCMS, WordPress.com, and
+Slack with `stale: false`, but their action lists are still empty. Live
+SerpAPI/CMS/Slack execution is not considered verified until action-level
+metadata is available or an explicitly approved live smoke test is run.
 
 ## Coding Agent Implementation State
 
