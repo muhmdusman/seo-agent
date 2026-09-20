@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -21,6 +22,7 @@ from services.session_service import SessionService
 
 
 jwt_service = JWTService()
+logger = logging.getLogger(__name__)
 
 
 def _hash_token(token: str) -> str:
@@ -53,10 +55,15 @@ async def authenticate(
                 raise Exception("Wrong token type")
 
             request.state.user = payload
+            logger.info(
+                "auth.success method=access_cookie user_id=%s session_id=%s",
+                payload.get("sub", ""),
+                payload.get("sid", ""),
+            )
             return payload
 
         except Exception as e:
-            print(f"Access token from cookie failed: {repr(e)}")
+            logger.info("auth.access_cookie.failed error=%r", e)
 
     # Temporary compatibility for old browser sessions created before the
     # cookie migration. New frontend requests do not send this header.
@@ -72,10 +79,15 @@ async def authenticate(
                 raise Exception("Wrong token type")
 
             request.state.user = payload
+            logger.info(
+                "auth.success method=authorization_header user_id=%s session_id=%s",
+                payload.get("sub", ""),
+                payload.get("sid", ""),
+            )
             return payload
 
         except Exception as e:
-            print(f"Authorization header token failed: {repr(e)}")
+            logger.info("auth.authorization_header.failed error=%r", e)
 
     refresh_token = request.cookies.get("refresh_token")
 
@@ -134,11 +146,16 @@ async def authenticate(
             "sid": str(session.id),
             "type": "access",
         }
+        logger.info(
+            "auth.success method=refresh_cookie user_id=%s session_id=%s",
+            session.user_id,
+            session.id,
+        )
 
         return request.state.user
 
     except Exception as e:
-        print(f"Refresh token failed: {repr(e)}")
+        logger.info("auth.refresh_cookie.failed error=%r", e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication",

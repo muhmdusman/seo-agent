@@ -7,3 +7,4 @@ from .session import Session
 from .job import Job
 from .seo_report import SEOReport
 from .seo_task import SEOTask, SEOSubtask
+from .site_settings import SiteSettings

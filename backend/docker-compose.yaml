@@ -89,6 +89,33 @@ services:
       - --port
       - "8000"
 
+  worker:
+    image: seo-agent-backend:local
+    container_name: seo-agent-worker
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - seo-agent-network
+
+    command:
+      - python
+      - -m
+      - celery
+      - -A
+      - workers.daily_report_worker
+      - worker
+      - --loglevel=info
+      - --pool=solo
+
 networks:
   seo-agent-network:
     name: seo-agent-network

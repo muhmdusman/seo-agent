@@ -72,10 +72,13 @@ class Settings(BaseSettings):
     # development and tests can boot without the integration configured.
     FASTN_API_BASE_URL: str = Field(default="https://api.fastn.dev")
     FASTN_WORKFLOW_ID: str = Field(default="wf_3dd1351b36da")
+    FASTN_DESTINATIONS_WORKFLOW_ID: str = Field(default="wf_84cad8eacfc8")
+    FASTN_WIDGET_ID: str = Field(default="wgt_e50e98094782")
     FASTN_API_KEY: str = Field(default="")
     FASTN_AUTH_HEADER: str = Field(default="Authorization")
     FASTN_AUTH_SCHEME: str = Field(default="Bearer")
-    FASTN_TENANT_HEADER: str = Field(default="x-fastn-space-tenantid")
+    FASTN_TENANT_HEADER: str = Field(default="x-end-org-id")
+    FASTN_INSTALLATION_HEADER: str = Field(default="x-installation-id")
     FASTN_TIMEOUT_SECONDS: float = Field(default=30.0, gt=0)
 
     #redis config

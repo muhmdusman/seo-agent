@@ -26,6 +26,8 @@ def _site_settings_json(site_url, row):
         "github_repo_url": f"https://github.com/{row.github_owner}/{row.github_repo}" if row.github_owner and row.github_repo else "",
         "github_owner": row.github_owner or "",
         "github_repo": row.github_repo or "",
+        "google_spreadsheet_id": row.google_spreadsheet_id or "",
+        "google_spreadsheet_name": row.google_spreadsheet_name or "",
     }
 
 
@@ -41,7 +43,7 @@ async def update_site_settings(site_url: str = Query(min_length=1, max_length=20
                                body: SiteSettingsUpdate = ..., user=Depends(authenticate),
                                db: AsyncSession = Depends(get_db)):
     try:
-        row = await SiteSettingsService(db).update(UUID(user["sub"]), site_url, body.github_repo_url)
+        row = await SiteSettingsService(db).update(UUID(user["sub"]), site_url, body)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return _site_settings_json(site_url, row)

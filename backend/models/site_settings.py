@@ -16,3 +16,5 @@ class SiteSettings(Base):
     site_url: Mapped[str] = mapped_column(String(2000))
     github_owner: Mapped[str] = mapped_column(String(100), default="", server_default="")
     github_repo: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    google_spreadsheet_id: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    google_spreadsheet_name: Mapped[str] = mapped_column(String(500), default="", server_default="")
