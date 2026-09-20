@@ -68,5 +68,5 @@ USER appuser
 
 EXPOSE 8000
 
-# Start FastAPI through the Python interpreter.
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start FastAPI on the port assigned by the hosting platform.
+CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

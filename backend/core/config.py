@@ -1,4 +1,5 @@
 from functools import lru_cache
+from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -85,6 +86,22 @@ class Settings(BaseSettings):
     # REDIS_HOST:str = Field(...)|"localhost"
     # REDIS_PORT:int = Field(...)|6379
     REDIS_URL: str = Field("redis://redis:6379/0")
+
+    @property
+    def ASYNC_DATABASE_URL(self) -> str:
+        """Return a SQLAlchemy async Postgres URL.
+
+        Managed platforms commonly expose DATABASE_URL as postgresql:// or
+        postgres://. The app uses SQLAlchemy async sessions with psycopg, so
+        normalize those URLs at the edge while keeping local
+        postgresql+psycopg:// values unchanged.
+        """
+        parsed = urlsplit(self.DATABASE_URL)
+
+        if parsed.scheme in {"postgres", "postgresql"}:
+            return urlunsplit(parsed._replace(scheme="postgresql+psycopg"))
+
+        return self.DATABASE_URL
 
     @property
     def LLM_API_KEY(self) -> str:

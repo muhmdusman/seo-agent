@@ -13,7 +13,7 @@ config = context.config
 
 config.set_main_option(
     "sqlalchemy.url",
-    settings.DATABASE_URL.replace("%", "%%"),
+    settings.ASYNC_DATABASE_URL.replace("%", "%%"),
 )
 
 if config.config_file_name is not None:
@@ -24,7 +24,7 @@ target_metadata = Base.metadata
 
 def run_migrations_offline():
     context.configure(
-        url=settings.DATABASE_URL,
+        url=settings.ASYNC_DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         compare_type=True,
