@@ -33,7 +33,7 @@ async def _fastn_customer_context(user, db: AsyncSession) -> dict[str, str]:
     if account and account.email:
         display_name = f"SEO Agent {account.email}"[:200]
     service = FastnWorkflowService()
-    end_org_id = await service.resolve_customer_end_org(customer_ref)
+    end_org_id = await service.resolve_customer_end_org(customer_ref, display_name)
     logger.info(
         "fastn.customer_context app_user_id=%s app_user_email=%s display_name=%s end_org_id=%s",
         customer_ref,
@@ -76,11 +76,15 @@ async def sync_report_tasks(
 @router.post("/embed-token")
 async def create_embed_token(user=Depends(authenticate), db: AsyncSession = Depends(get_db)):
     logger.info("fastn.embed_token.route.start app_user_id=%s", user["sub"])
+    customer_ref = str(user["sub"])
+    account = None
     try:
         service = FastnWorkflowService()
-        context = await _fastn_customer_context(user, db)
-        customer_id = context["endOrgId"]
-        result = await service.create_embed_token(customer_id)
+        account = await db.get(User, UUID(customer_ref))
+        display_name = f"SEO Agent User {customer_ref[:8]}"
+        if account and account.email:
+            display_name = f"SEO Agent {account.email}"[:200]
+        result = await service.create_embed_token_for_customer(customer_ref, display_name)
     except FastnWorkflowConfigurationError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except FastnWorkflowRequestError as exc:
@@ -91,24 +95,24 @@ async def create_embed_token(user=Depends(authenticate), db: AsyncSession = Depe
 
     data = result.get("data", result)
     token = data.get("token") if isinstance(data, dict) else None
+    end_org_id = data.get("endOrgId", customer_ref) if isinstance(data, dict) else customer_ref
     if not token:
-        logger.error("fastn.embed_token.route.missing_token app_user_id=%s end_org_id=%s", user["sub"], customer_id)
+        logger.error("fastn.embed_token.route.missing_token app_user_id=%s end_org_id=%s", customer_ref, end_org_id)
         raise HTTPException(status_code=502, detail="Fastn did not return an embed token.")
     logger.info(
-        "fastn.embed_token.route.success app_user_id=%s app_user_email=%s end_org_id=%s returned_end_org_id=%s",
-        context["appUserId"],
-        context["appUserEmail"],
-        customer_id,
-        data.get("endOrgId", customer_id),
+        "fastn.embed_token.route.success app_user_id=%s app_user_email=%s returned_end_org_id=%s",
+        customer_ref,
+        account.email if account and account.email else "",
+        end_org_id,
     )
     return {
         "token": token,
-        "endOrgId": data.get("endOrgId", customer_id),
+        "endOrgId": end_org_id,
         "expiresIn": data.get("expiresIn", 28800),
         "iframeUrl": f"{settings.FASTN_API_BASE_URL.rstrip('/')}/api/v1/embed/iframe?token={token}",
         "appUser": {
-            "id": context["appUserId"],
-            "email": context["appUserEmail"],
+            "id": customer_ref,
+            "email": account.email if account and account.email else "",
         },
     }
 

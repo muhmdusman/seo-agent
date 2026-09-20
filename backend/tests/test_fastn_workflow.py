@@ -1,11 +1,12 @@
 import json
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import httpx
 
+from api.routes import fastn as fastn_routes
 from core.config import settings
 from schemas.fastn import FastnWorkflowExecuteRequest
 from services.fastn_workflow_service import (
@@ -149,6 +150,38 @@ class FastnWorkflowServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(seen["customer"], "app-user-1")
         self.assertEqual(result, "real-end-org")
 
+    async def test_embed_token_for_customer_creates_missing_customer_mapping(self):
+        settings.FASTN_API_KEY = "fsk_test_example"
+        calls = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append((request.method, request.url.path, request.headers.get("x-org-id")))
+            if request.method == "POST" and request.url.path == "/api/v1/embed/token" and len(calls) == 1:
+                return httpx.Response(
+                    404,
+                    json={"message": "x-org-id does not match a customer organization of this account"},
+                )
+            if request.method == "GET" and request.url.path == "/api/v1/orgs":
+                return httpx.Response(200, json={"data": []})
+            if request.method == "POST" and request.url.path == "/api/v1/orgs":
+                return httpx.Response(200, json={"data": {"endOrgId": "real-end-org"}})
+            if request.method == "POST" and request.url.path == "/api/v1/embed/token":
+                return httpx.Response(
+                    200,
+                    json={"data": {"token": "emb_test", "endOrgId": "real-end-org", "expiresIn": 28800}},
+                )
+            return httpx.Response(500, json={"message": "unexpected request"})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await FastnWorkflowService(
+                api_base_url="https://api.fastn.dev",
+                client=client,
+            ).create_embed_token_for_customer("app-user-2", "SEO Agent owner@example.test")
+
+        self.assertEqual(result["data"]["endOrgId"], "real-end-org")
+        self.assertEqual(calls[0], ("POST", "/api/v1/embed/token", "app-user-2"))
+        self.assertEqual(calls[-1], ("POST", "/api/v1/embed/token", "app-user-2"))
+
     async def test_ensure_customer_org_reuses_existing_reference(self):
         settings.FASTN_API_KEY = "fsk_test_example"
         calls = []
@@ -225,3 +258,35 @@ class FastnTaskSyncTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["selectedSheet"]["spreadsheetName"], "SEO Tasks")
         workflow.resolve_customer_end_org.assert_awaited_once_with(str(user_id))
         self.assertEqual(workflow.execute.await_args.kwargs["tenant_id"], "end-org-1")
+
+
+class FastnRouteTests(unittest.IsolatedAsyncioTestCase):
+    async def test_embed_token_route_uses_app_user_reference_for_widget_token(self):
+        user_id = uuid4()
+        db = SimpleNamespace(
+            get=AsyncMock(return_value=SimpleNamespace(email="owner@example.test")),
+        )
+        service = SimpleNamespace(
+            create_embed_token_for_customer=AsyncMock(return_value={
+                "data": {
+                    "token": "emb_test",
+                    "endOrgId": "real-end-org",
+                    "expiresIn": 28800,
+                },
+            }),
+            resolve_customer_end_org=AsyncMock(return_value="real-end-org"),
+        )
+
+        with patch.object(fastn_routes, "FastnWorkflowService", return_value=service):
+            result = await fastn_routes.create_embed_token(
+                user={"sub": str(user_id)},
+                db=db,
+            )
+
+        service.create_embed_token_for_customer.assert_awaited_once_with(
+            str(user_id),
+            "SEO Agent owner@example.test",
+        )
+        service.resolve_customer_end_org.assert_not_called()
+        self.assertEqual(result["endOrgId"], "real-end-org")
+        self.assertEqual(result["appUser"]["email"], "owner@example.test")

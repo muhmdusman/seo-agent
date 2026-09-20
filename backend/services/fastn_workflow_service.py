@@ -126,7 +126,7 @@ class FastnWorkflowService:
         if settings.FASTN_API_KEY.startswith("fsk_test_"):
             headers["X-fastn-Test-Mode"] = "true"
 
-        logger.info("fastn.embed_token.start end_org_id=%s", customer_id)
+        logger.info("fastn.embed_token.start customer_id=%s", customer_id)
         try:
             if self.client is not None:
                 response = await self.client.post(url, json={}, headers=headers)
@@ -134,12 +134,12 @@ class FastnWorkflowService:
                 async with httpx.AsyncClient(timeout=settings.FASTN_TIMEOUT_SECONDS) as client:
                     response = await client.post(url, json={}, headers=headers)
         except httpx.HTTPError as exc:
-            logger.exception("fastn.embed_token.network_error end_org_id=%s", customer_id)
+            logger.exception("fastn.embed_token.network_error customer_id=%s", customer_id)
             raise FastnWorkflowRequestError(502, f"Fastn embed token request failed: {exc}") from exc
 
         if response.status_code >= 400:
             logger.warning(
-                "fastn.embed_token.error end_org_id=%s status_code=%s detail=%s",
+                "fastn.embed_token.error customer_id=%s status_code=%s detail=%s",
                 customer_id,
                 response.status_code,
                 self._error_detail(response),
@@ -148,13 +148,36 @@ class FastnWorkflowService:
         body = self._response_body(response)
         data = body.get("data", body)
         logger.info(
-            "fastn.embed_token.success end_org_id=%s returned_end_org_id=%s expires_in=%s token_present=%s",
+            "fastn.embed_token.success customer_id=%s returned_end_org_id=%s expires_in=%s token_present=%s",
             customer_id,
             data.get("endOrgId") if isinstance(data, dict) else "",
             data.get("expiresIn") if isinstance(data, dict) else "",
             bool(data.get("token")) if isinstance(data, dict) else False,
         )
         return body
+
+    async def create_embed_token_for_customer(
+        self,
+        customer_id: str,
+        display_name: str | None = None,
+    ) -> dict[str, Any]:
+        try:
+            return await self.create_embed_token(customer_id)
+        except FastnWorkflowRequestError as exc:
+            if exc.status_code != 404 or "x-org-id does not match" not in exc.detail:
+                raise
+
+            logger.info(
+                "fastn.embed_token.customer_missing customer_id=%s detail=%s",
+                customer_id,
+                exc.detail,
+            )
+            await self.ensure_customer_org(
+                customer_id,
+                (display_name or f"SEO Agent User {customer_id[:8]}")[:200],
+            )
+            logger.info("fastn.embed_token.retry_after_create customer_id=%s", customer_id)
+            return await self.create_embed_token(customer_id)
 
     async def ensure_customer_org(self, customer_ref: str, display_name: str) -> str:
         """Return the Fastn org id for an app user, creating the end-org once."""
@@ -449,8 +472,8 @@ class FastnWorkflowService:
 
         return f"Fastn returned HTTP {response.status_code}."
 
-    async def resolve_customer_end_org(self, customer_id: str) -> str:
-        body = await self.create_embed_token(customer_id)
+    async def resolve_customer_end_org(self, customer_id: str, display_name: str | None = None) -> str:
+        body = await self.create_embed_token_for_customer(customer_id, display_name)
         data = body.get("data", body)
 
         end_org_id = data.get("endOrgId") if isinstance(data, dict) else None
