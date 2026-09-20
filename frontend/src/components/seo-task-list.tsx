@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, CheckCheck } from 'lucide-react';
+import { CheckCheck, ChevronDown, ChevronRight, CodeXml, ExternalLink, LoaderCircle } from 'lucide-react';
 import { REVIEW_LABELS, slugLabel, stageLabel, type SEOTask } from '@/lib/seo-types';
 import { SEOReviewDetails } from '@/components/seo-review-summary';
 
@@ -9,9 +9,39 @@ interface Props {
   tasks: SEOTask[];
   disabled: boolean;
   onChange: (task: SEOTask, completed: boolean, subtaskId?: string) => Promise<void>;
+  onCodingAction: (task: SEOTask, action: 'propose' | 'approve') => Promise<void>;
 }
 
-export function SEOTaskList({ tasks, disabled, onChange }: Props) {
+function CodingDiff({ task, disabled, onAction }: { task: SEOTask; disabled: boolean; onAction: Props['onCodingAction'] }) {
+  if (task.target_platform !== 'github') return null;
+  const implementation = task.implementation;
+  const status = implementation?.status ?? 'pending';
+  const hasProposal = status === 'proposed' && Boolean(implementation?.diff);
+  const pullRequest = implementation?.result?.pull_request;
+  const running = status === 'running';
+  return <section className="border-t border-zinc-200 pt-4" aria-label="Coding agent proposal">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center gap-2 text-xs font-medium text-zinc-800"><CodeXml className="h-4 w-4 text-emerald-700" />Sandbox code proposal</div>
+      <span className={`text-xs ${status === 'failed' || status === 'blocked' ? 'text-red-700' : status === 'proposed' ? 'text-amber-700' : 'text-zinc-500'}`}>{status.replace('_', ' ')}</span>
+    </div>
+    {implementation?.error && <p role="alert" className="mt-2 text-xs text-red-700">{implementation.error}</p>}
+    {implementation?.branch && <p className="mt-2 break-all text-xs text-zinc-500">Branch: {implementation.branch}</p>}
+    {implementation?.diff && <details className="mt-3 rounded-md border border-zinc-200 bg-zinc-950 text-zinc-100">
+      <summary className="cursor-pointer px-3 py-2 text-xs font-medium">Review generated diff</summary>
+      <pre className="max-h-80 overflow-auto border-t border-zinc-700 p-3 text-xs leading-5">{implementation.diff}</pre>
+    </details>}
+    {implementation?.result?.sandbox_tests && <p className="mt-2 text-xs text-emerald-800">Sandbox checks: {Object.values(implementation.result.sandbox_tests).join(' · ')}</p>}
+    {pullRequest?.url && <a href={pullRequest.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-emerald-800 hover:text-emerald-900">Open pull request <ExternalLink className="h-3.5 w-3.5" /></a>}
+    {!pullRequest?.url && <div className="mt-3 flex flex-wrap gap-2">
+      {!hasProposal && <button type="button" disabled={disabled || running} onClick={() => void onAction(task, 'propose')} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-emerald-200 px-3 py-2 text-xs font-medium text-emerald-800 hover:bg-emerald-50 disabled:opacity-50">
+        {running ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <CodeXml className="h-3.5 w-3.5" />}Generate diff
+      </button>}
+      {hasProposal && <button type="button" disabled={disabled} onClick={() => void onAction(task, 'approve')} className="inline-flex min-h-9 items-center gap-2 rounded-md bg-emerald-700 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50"><CheckCheck className="h-3.5 w-3.5" />Approve change</button>}
+    </div>}
+  </section>;
+}
+
+export function SEOTaskList({ tasks, disabled, onChange, onCodingAction }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const pending = tasks.filter(task => !task.completed_at);
   const completed = tasks.filter(task => task.completed_at);
@@ -67,6 +97,7 @@ export function SEOTaskList({ tasks, disabled, onChange }: Props) {
             <summary className="cursor-pointer text-xs font-medium text-zinc-700">Coding-agent instruction</summary>
             <p className="mt-2 whitespace-pre-wrap border-l-2 border-emerald-200 pl-3">{task.agent_prompt}</p>
           </details>
+          <CodingDiff task={task} disabled={disabled} onAction={onCodingAction} />
         </div>}
       </div>
     );

@@ -140,6 +140,7 @@ export interface SEOTask {
   stage: string;
   title: string;
   priority: string;
+  target_platform: string;
   scope: string;
   evidence: string;
   why_it_matters: string;
@@ -151,6 +152,21 @@ export interface SEOTask {
     expected: string;
   } | null;
   review?: SEOTaskReview | null;
+  implementation?: {
+    status: 'pending' | 'running' | 'proposed' | 'applied' | 'pr_created' | 'blocked' | 'failed';
+    attempts: number;
+    branch: string;
+    diff: string;
+    result: {
+      commit?: string;
+      preview_path?: string;
+      pull_request?: { number?: number; url?: string; state?: string };
+      sandbox_tests?: Record<string, string>;
+    } | null;
+    error: string;
+    started_at: string | null;
+    completed_at: string | null;
+  };
   subtasks: { id: string; title: string; completed_at: string | null }[];
 }
 

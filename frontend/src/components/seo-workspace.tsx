@@ -349,6 +349,20 @@ export function SEOWorkspaceView({ siteUrl, onSummaryChange }: SEOWorkspaceViewP
     }
   }
 
+  async function runCodingAction(task: SEOTask, action: 'propose' | 'approve') {
+    setSaving(true);
+    setError('');
+    setStatus(action === 'propose' ? 'Generating a sandbox diff...' : 'Applying approved change...');
+    try {
+      await apiClient.request(`/agent/coding/${task.id}/${action}`, { method: 'POST' });
+      await loadWorkspace();
+    } catch (err) {
+      if (mounted.current) setError(err instanceof Error ? err.message : 'Coding-agent request could not be completed.');
+    } finally {
+      if (mounted.current) { setSaving(false); setStatus(''); }
+    }
+  }
+
   async function startAnalysis(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (analyzing || saving || workspace?.running || !workspace?.can_analyze) return;
@@ -496,7 +510,7 @@ export function SEOWorkspaceView({ siteUrl, onSummaryChange }: SEOWorkspaceViewP
           </>}
         </section>
         <div className="glass min-w-0 rounded-lg p-4 sm:p-5">
-          <SEOTaskList tasks={workspace.tasks} disabled={saving || busy} onChange={updateTask} />
+          <SEOTaskList tasks={workspace.tasks} disabled={saving || busy} onChange={updateTask} onCodingAction={runCodingAction} />
         </div>
       </div>}
       </div>

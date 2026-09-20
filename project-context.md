@@ -6,6 +6,12 @@ Canonical Fastn debugging guide:
 FASTN_WORKFLOW_CONTEXT.md
 ```
 
+Coding-agent to Fastn handoff guide:
+
+```text
+CODING_FASTN_HANDOFF_CONTEXT.md
+```
+
 Use that file when diagnosing tenant, end-org, installation, embed token, repo picker, spreadsheet picker, or workflow execution issues.
 
 ## Overview
